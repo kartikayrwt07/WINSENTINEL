@@ -1,0 +1,35 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}"/>
+      <EventID>4688</EventID>
+      <Version>2</Version>
+      <Level>0</Level>
+      <Task>13312</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2023-04-10T14:22:15.5000000Z"/>
+      <EventRecordID>50001</EventRecordID>
+      <Channel>Security</Channel>
+      <Computer>DC01.CORP.LOCAL</Computer>
+      <Security/>
+    </System>
+    <EventData>
+      <Data Name="SubjectUserSid">S-1-5-21-12345678-12345678-12345678-500</Data>
+      <Data Name="SubjectUserName">Administrator</Data>
+      <Data Name="SubjectDomainName">CORP</Data>
+      <Data Name="SubjectLogonId">0x3e7</Data>
+      <Data Name="NewProcessId">0x1f4</Data>
+      <Data Name="NewProcessName">C:\Windows\System32\whoami.exe</Data>
+      <Data Name="TokenElevationType">%%1936</Data>
+      <Data Name="ProcessId">0x4</Data>
+      <Data Name="CommandLine">whoami.exe /priv</Data>
+      <Data Name="TargetUserSid">S-1-0-0</Data>
+      <Data Name="TargetUserName">-</Data>
+      <Data Name="TargetDomainName">-</Data>
+      <Data Name="TargetLogonId">0x0</Data>
+      <Data Name="ParentProcessName">C:\Windows\System32\cmd.exe</Data>
+      <Data Name="MandatoryLabel">S-1-16-12288</Data>
+    </EventData>
+  </Event>
+</Events>

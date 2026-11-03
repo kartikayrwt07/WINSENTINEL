@@ -1,0 +1,9 @@
+<Events>
+  <Event>
+    <System>
+      <Provider Name="Microsoft-Windows-Sysmon" />
+      <EventID>1</EventID>
+      <TimeCreated SystemTime="2023-04-10T14:22:15Z" />
+    </System>
+    <EventData>
+      <Data Name="CommandLine">cmd.exe

@@ -1,0 +1,7 @@
+<Events>
+  <Event>
+    <EventData>
+      <Data Name="CommandLine">powershell.exe -ep bypass</Data>
+    </EventData>
+  </Event>
+</Events>

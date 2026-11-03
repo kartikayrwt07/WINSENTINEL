@@ -1,0 +1,26 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}"/>
+      <EventID>4698</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>12804</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2023-04-10T14:26:00.0000000Z"/>
+      <EventRecordID>50003</EventRecordID>
+      <Channel>Security</Channel>
+      <Computer>DC01.CORP.LOCAL</Computer>
+      <Security/>
+    </System>
+    <EventData>
+      <Data Name="SubjectUserSid">S-1-5-21-12345678-12345678-12345678-500</Data>
+      <Data Name="SubjectUserName">Administrator</Data>
+      <Data Name="SubjectDomainName">CORP</Data>
+      <Data Name="SubjectLogonId">0x3e7</Data>
+      <Data Name="TaskName">\Microsoft\Windows\SystemRestore\PersistentBackdoor</Data>
+      <Data Name="TaskContent">&lt;Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"&gt;&lt;Actions&gt;&lt;Exec&gt;&lt;Command&gt;powershell.exe&lt;/Command&gt;&lt;Arguments&gt;-enc IAAgAA==&lt;/Arguments&gt;&lt;/Exec&gt;&lt;/Actions&gt;&lt;/Task&gt;</Data>
+    </EventData>
+  </Event>
+</Events>

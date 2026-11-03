@@ -1,0 +1,29 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}"/>
+      <EventID>4697</EventID>
+      <Version>0</Version>
+      <Level>0</Level>
+      <Task>12289</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8020000000000000</Keywords>
+      <TimeCreated SystemTime="2023-04-10T14:25:00.0000000Z"/>
+      <EventRecordID>50002</EventRecordID>
+      <Channel>Security</Channel>
+      <Computer>DC01.CORP.LOCAL</Computer>
+      <Security/>
+    </System>
+    <EventData>
+      <Data Name="SubjectUserSid">S-1-5-18</Data>
+      <Data Name="SubjectUserName">SYSTEM</Data>
+      <Data Name="SubjectDomainName">NT AUTHORITY</Data>
+      <Data Name="SubjectLogonId">0x3e7</Data>
+      <Data Name="ServiceName">PwnService</Data>
+      <Data Name="ServiceFileName">C:\Windows\Temp\pwn.exe</Data>
+      <Data Name="ServiceType">0x10</Data>
+      <Data Name="ServiceStartType">2</Data>
+      <Data Name="ServiceAccount">LocalSystem</Data>
+    </EventData>
+  </Event>
+</Events>

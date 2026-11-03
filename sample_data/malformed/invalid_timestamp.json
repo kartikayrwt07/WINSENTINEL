@@ -1,0 +1,15 @@
+[
+  {
+    "System": {
+      "Provider": "Microsoft-Windows-Sysmon",
+      "EventID": 1,
+      "TimeCreated": "NOT_A_VALID_DATE_STRING_AT_ALL",
+      "Computer": "MALFORMED-HOST",
+      "Channel": "Microsoft-Windows-Sysmon/Operational"
+    },
+    "EventData": {
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "CommandLine": "cmd.exe"
+    }
+  }
+]

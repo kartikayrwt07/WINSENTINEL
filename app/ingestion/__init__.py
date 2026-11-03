@@ -8,6 +8,7 @@ from app.ingestion.base import (
 )
 from app.ingestion.evtx_parser import EVTXParser
 from app.ingestion.json_parser import JSONParser
+from app.ingestion.pipeline import IngestionPipeline
 from app.ingestion.xml_parser import XMLParser, parse_event_xml
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "XMLParser",
     "JSONParser",
     "parse_event_xml",
+    "IngestionPipeline",
 ]

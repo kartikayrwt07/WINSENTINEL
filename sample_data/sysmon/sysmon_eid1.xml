@@ -1,0 +1,45 @@
+<Events>
+  <Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+      <Provider Name="Microsoft-Windows-Sysmon" Guid="{5770385F-C22A-43E0-BF4C-06F5698FFBD9}"/>
+      <EventID>1</EventID>
+      <Version>5</Version>
+      <Level>4</Level>
+      <Task>1</Task>
+      <Opcode>0</Opcode>
+      <Keywords>0x8000000000000000</Keywords>
+      <TimeCreated SystemTime="2023-04-10T14:22:15.1234567Z"/>
+      <EventRecordID>1001</EventRecordID>
+      <Correlation/>
+      <Execution ProcessID="2048" ThreadID="3092"/>
+      <Channel>Microsoft-Windows-Sysmon/Operational</Channel>
+      <Computer>DESKTOP-VICTIM01</Computer>
+      <Security UserID="S-1-5-18"/>
+    </System>
+    <EventData>
+      <Data Name="RuleName">-</Data>
+      <Data Name="UtcTime">2023-04-10 14:22:15.123</Data>
+      <Data Name="ProcessGuid">{8A4E9A5E-1234-5678-90AB-CDEF12345678}</Data>
+      <Data Name="ProcessId">4104</Data>
+      <Data Name="Image">C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Data>
+      <Data Name="FileVersion">10.0.19041.1</Data>
+      <Data Name="Description">Windows PowerShell</Data>
+      <Data Name="Product">Microsoft® Windows® Operating System</Data>
+      <Data Name="Company">Microsoft Corporation</Data>
+      <Data Name="OriginalFileName">PowerShell.EXE</Data>
+      <Data Name="CommandLine">powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "Write-Output Hello"</Data>
+      <Data Name="CurrentDirectory">C:\Users\victim\</Data>
+      <Data Name="User">CORP\victim</Data>
+      <Data Name="LogonGuid">{8A4E9A5E-0000-0000-0000-000003E70000}</Data>
+      <Data Name="LogonId">0x3e7</Data>
+      <Data Name="TerminalSessionId">1</Data>
+      <Data Name="IntegrityLevel">Medium</Data>
+      <Data Name="Hashes">SHA256=A1B2C3D4E5F678901234567890ABCDEF1234567890ABCDEF1234567890ABCDEF,MD5=0123456789ABCDEF0123456789ABCDEF</Data>
+      <Data Name="ParentProcessGuid">{8A4E9A5E-1111-2222-3333-444455556666}</Data>
+      <Data Name="ParentProcessId">2980</Data>
+      <Data Name="ParentImage">C:\Windows\System32\cmd.exe</Data>
+      <Data Name="ParentCommandLine">"cmd.exe"</Data>
+      <Data Name="ParentUser">CORP\victim</Data>
+    </EventData>
+  </Event>
+</Events>
