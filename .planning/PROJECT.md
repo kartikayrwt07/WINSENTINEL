@@ -61,3 +61,4 @@ Every detection must have explainable, traceable supporting evidence tying match
 
 ---
 *Last updated: 2026-11-03 after GSD new-project initialization*
+

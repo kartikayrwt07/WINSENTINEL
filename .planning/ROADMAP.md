@@ -31,9 +31,9 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Normalized event Pydantic schema and core typed data structures.
-- [ ] 01-02: EVTX, XML, and JSON event parsers with malformed record handling and duplicate suppression.
-- [ ] 01-03: Sysmon, PowerShell, and Security event normalizers with unit test fixtures.
+- [ ] 01-01: Normalized Event Pydantic Schema, SHA-256 Fingerprinting, and Import Statistics (Wave 1)
+- [ ] 01-02: Streaming Ingestion Engine & Safe Parsers for EVTX, XML, and JSON (Wave 2)
+- [ ] 01-03: Sysmon, Security, and PowerShell Normalizers, Pipeline, and Test Fixtures (Wave 3)
 
 ### Phase 2: Database Layer & Persistent Storage
 **Goal**: Implement a robust, thread-safe SQLite storage engine with migrations, foreign keys, indexes, and parameterized queries.  
@@ -139,3 +139,4 @@ Plans:
 
 ---
 *Roadmap defined: 2026-11-03*
+
