@@ -8,6 +8,11 @@ from app.analyzers.lineage_detector import (
     LineageRule,
 )
 from app.analyzers.pid_resolver import ProcessLifespan, TemporalPIDResolver
+from app.analyzers.powershell_analyzer import PowerShellThreatAnalyzer
+from app.analyzers.powershell_deobfuscator import (
+    DeobfuscationResult,
+    PowerShellDeobfuscator,
+)
 from app.analyzers.process_analyzer import (
     ProcessNode,
     ProcessTreeGraph,
@@ -18,9 +23,12 @@ from app.analyzers.process_analyzer import (
 __all__ = [
     "AnomalySeverity",
     "DEFAULT_LINEAGE_RULES",
+    "DeobfuscationResult",
     "LineageAnomaly",
     "LineageAnomalyDetector",
     "LineageRule",
+    "PowerShellDeobfuscator",
+    "PowerShellThreatAnalyzer",
     "ProcessLifespan",
     "ProcessNode",
     "ProcessTreeGraph",

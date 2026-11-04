@@ -13,6 +13,7 @@ from app.models.events import (
     parse_windows_timestamp,
 )
 from app.models.fingerprint import compute_event_fingerprint
+from app.models.powershell import PowerShellAnalysisResult
 from app.models.rule import (
     DetectionBlock,
     DetectionRule,
@@ -32,6 +33,7 @@ __all__ = [
     "parse_hashes_string",
     "parse_windows_timestamp",
     "compute_event_fingerprint",
+    "PowerShellAnalysisResult",
     "ImportStatistics",
     "QuarantineRecord",
     "DetectionBlock",
