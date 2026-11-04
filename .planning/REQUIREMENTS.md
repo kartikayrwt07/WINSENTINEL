@@ -59,17 +59,17 @@
 
 ### 7. Event Correlation Engine (CORR)
 
-- [ ] **CORR-01**: Multi-stage attack chain correlation linking process lineage, subsequent network egress, persistence installation, and script execution within configurable time windows.
-- [ ] **CORR-02**: Correlation scoping by `ProcessGuid`, host computer, user account, and time window.
-- [ ] **CORR-03**: Alert de-duplication to prevent repeated matches from flooding the alert repository.
-- [ ] **CORR-04**: Generation of compound incidents linking individual rule matches with an explainable chronological summary.
+- [x] **CORR-01**: Multi-stage attack chain correlation linking process lineage, subsequent network egress, persistence installation, and script execution within configurable time windows.
+- [x] **CORR-02**: Correlation scoping by `ProcessGuid`, host computer, user account, and time window.
+- [x] **CORR-03**: Alert de-duplication to prevent repeated matches from flooding the alert repository.
+- [x] **CORR-04**: Generation of compound incidents linking individual rule matches with an explainable chronological summary.
 
 ### 8. Storage & Alert Management (ALERT)
 
 - [x] **ALERT-01**: SQLite schema with migrations storing raw/normalized events, process trees, detection rules, alerts, evidence references, and analyst notes.
-- [ ] **ALERT-02**: Alert lifecycle tracking with status transitions: `New`, `Investigating`, `Escalated`, `Resolved`, `False Positive`.
-- [ ] **ALERT-03**: Analyst annotation interface to append notes and investigation disposition to alerts.
-- [ ] **ALERT-04**: Forensic evidence drill-down returning original event records and field values backing any alert.
+- [x] **ALERT-02**: Alert lifecycle tracking with status transitions: `New`, `Investigating`, `Escalated`, `Resolved`, `False Positive`.
+- [x] **ALERT-03**: Analyst annotation interface to append notes and investigation disposition to alerts.
+- [x] **ALERT-04**: Forensic evidence drill-down returning original event records and field values backing any alert.
 
 ### 9. False-Positive & Rule Evaluation Engine (EVAL)
 
@@ -147,13 +147,13 @@
 | PERS-03 | Phase 5 | Complete |
 | PERS-04 | Phase 5 | Complete |
 | PERS-05 | Phase 5 | Complete |
-| CORR-01 | Phase 6 | Pending |
-| CORR-02 | Phase 6 | Pending |
-| CORR-03 | Phase 6 | Pending |
-| CORR-04 | Phase 6 | Pending |
-| ALERT-02 | Phase 6 | Pending |
-| ALERT-03 | Phase 6 | Pending |
-| ALERT-04 | Phase 6 | Pending |
+| CORR-01 | Phase 6 | Complete |
+| CORR-02 | Phase 6 | Complete |
+| CORR-03 | Phase 6 | Complete |
+| CORR-04 | Phase 6 | Complete |
+| ALERT-02 | Phase 6 | Complete |
+| ALERT-03 | Phase 6 | Complete |
+| ALERT-04 | Phase 6 | Complete |
 | EVAL-01 | Phase 7 | Pending |
 | EVAL-02 | Phase 7 | Pending |
 | EVAL-03 | Phase 7 | Pending |

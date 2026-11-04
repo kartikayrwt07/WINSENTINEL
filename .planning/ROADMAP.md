@@ -11,7 +11,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 - [x] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage. (completed 2026-11-04)
 - [x] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules. (completed 2026-11-04)
 - [x] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks. (completed 2026-11-04)
-- [ ] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite.
+- [x] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite. (completed 2026-11-04)
 - [ ] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR.
 - [ ] **Phase 8: SOC Investigation Dashboard & Timeline** - Build 10-page Streamlit dashboard featuring Event Explorer, Process Tree graphs, Timeline, Alerts, and Evaluation reports.
 
@@ -114,11 +114,11 @@ Plans:
   2. Correlation engine respects temporal windows and process lineage without excessive noise.
   3. Alerts persist in SQLite with full evidence references and status workflow (`New` -> `Resolved` / `False Positive`).
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 06-01: Event correlation engine with sliding time-window and process tree linking.
-- [ ] 06-02: Alert management service, deduplication, and evidence traceability repository.
+- [x] 06-01: Event correlation engine with sliding time-window and process tree linking.
+- [x] 06-02: Alert management service, deduplication, and evidence traceability repository.
 
 ### Phase 7: False-Positive & Rule Evaluation Engine
 
