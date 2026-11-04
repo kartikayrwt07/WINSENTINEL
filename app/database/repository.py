@@ -101,6 +101,78 @@ INSERT_EVENT_SQL = (
     f"VALUES ({_EVENT_PLACEHOLDERS_STR});"
 )
 
+INSERT_PROCESS_IGNORE_SQL = """
+INSERT OR IGNORE INTO processes (
+    process_guid, process_id, computer, image, command_line,
+    current_directory, user, integrity_level, parent_process_guid,
+    parent_process_id, parent_image, parent_command_line,
+    start_time, end_time, exit_code, is_synthesized,
+    is_orphaned, is_anomalous, anomaly_reasons_json
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+"""
+
+UPSERT_PROCESS_SQL = """
+INSERT INTO processes (
+    process_guid, process_id, computer, image, command_line,
+    current_directory, user, integrity_level, parent_process_guid,
+    parent_process_id, parent_image, parent_command_line,
+    start_time, end_time, exit_code, is_synthesized,
+    is_orphaned, is_anomalous, anomaly_reasons_json
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(process_guid) DO UPDATE SET
+    end_time = coalesce(excluded.end_time, processes.end_time),
+    exit_code = coalesce(excluded.exit_code, processes.exit_code),
+    is_synthesized = CASE 
+        WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN 0 
+        ELSE processes.is_synthesized 
+    END,
+    process_id = CASE 
+        WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.process_id 
+        ELSE processes.process_id 
+    END,
+    start_time = CASE 
+        WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.start_time 
+        ELSE processes.start_time 
+    END,
+    is_orphaned = CASE 
+        WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.is_orphaned 
+        ELSE processes.is_orphaned 
+    END,
+    image = CASE 
+        WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.image 
+        ELSE processes.image 
+    END,
+    command_line = CASE
+        WHEN excluded.command_line IS NOT NULL THEN excluded.command_line
+        ELSE processes.command_line
+    END,
+    user = CASE
+        WHEN excluded.user IS NOT NULL THEN excluded.user
+        ELSE processes.user
+    END,
+    parent_process_guid = CASE
+        WHEN excluded.parent_process_guid IS NOT NULL THEN excluded.parent_process_guid
+        ELSE processes.parent_process_guid
+    END,
+    parent_process_id = CASE
+        WHEN excluded.parent_process_id IS NOT NULL THEN excluded.parent_process_id
+        ELSE processes.parent_process_id
+    END,
+    parent_image = CASE
+        WHEN excluded.parent_image IS NOT NULL THEN excluded.parent_image
+        ELSE processes.parent_image
+    END,
+    parent_command_line = CASE
+        WHEN excluded.parent_command_line IS NOT NULL THEN excluded.parent_command_line
+        ELSE processes.parent_command_line
+    END,
+    is_anomalous = max(processes.is_anomalous, excluded.is_anomalous),
+    anomaly_reasons_json = CASE
+        WHEN excluded.anomaly_reasons_json IS NOT NULL AND excluded.anomaly_reasons_json != '[]' THEN excluded.anomaly_reasons_json
+        ELSE processes.anomaly_reasons_json
+    END;
+"""
+
 
 class ImportJobRepository:
     """Manages file import tracking and job execution audits."""
@@ -779,55 +851,7 @@ class ProcessRepository:
                 )
 
         conn.execute(
-            """
-            INSERT INTO processes (
-                process_guid, process_id, computer, image, command_line,
-                current_directory, user, integrity_level, parent_process_guid,
-                parent_process_id, parent_image, parent_command_line,
-                start_time, end_time, exit_code, is_synthesized,
-                is_orphaned, is_anomalous, anomaly_reasons_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(process_guid) DO UPDATE SET
-                end_time = coalesce(excluded.end_time, processes.end_time),
-                exit_code = coalesce(excluded.exit_code, processes.exit_code),
-                is_synthesized = CASE 
-                    WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN 0 
-                    ELSE processes.is_synthesized 
-                END,
-                image = CASE 
-                    WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.image 
-                    ELSE processes.image 
-                END,
-                command_line = CASE
-                    WHEN excluded.command_line IS NOT NULL THEN excluded.command_line
-                    ELSE processes.command_line
-                END,
-                user = CASE
-                    WHEN excluded.user IS NOT NULL THEN excluded.user
-                    ELSE processes.user
-                END,
-                parent_process_guid = CASE
-                    WHEN excluded.parent_process_guid IS NOT NULL THEN excluded.parent_process_guid
-                    ELSE processes.parent_process_guid
-                END,
-                parent_process_id = CASE
-                    WHEN excluded.parent_process_id IS NOT NULL THEN excluded.parent_process_id
-                    ELSE processes.parent_process_id
-                END,
-                parent_image = CASE
-                    WHEN excluded.parent_image IS NOT NULL THEN excluded.parent_image
-                    ELSE processes.parent_image
-                END,
-                parent_command_line = CASE
-                    WHEN excluded.parent_command_line IS NOT NULL THEN excluded.parent_command_line
-                    ELSE processes.parent_command_line
-                END,
-                is_anomalous = max(processes.is_anomalous, excluded.is_anomalous),
-                anomaly_reasons_json = CASE
-                    WHEN excluded.anomaly_reasons_json IS NOT NULL AND excluded.anomaly_reasons_json != '[]' THEN excluded.anomaly_reasons_json
-                    ELSE processes.anomaly_reasons_json
-                END;
-            """,
+            UPSERT_PROCESS_SQL,
             (
                 node.process_guid,
                 node.process_id,
@@ -856,7 +880,7 @@ class ProcessRepository:
         nodes: list[ProcessNode],
         chunk_size: int = 1000,
     ) -> int:
-        """Batch insert or update process records in atomic chunked transactions."""
+        """Batch insert or update process records in atomic chunked transactions using executemany."""
         if not nodes:
             return 0
 
@@ -866,8 +890,75 @@ class ProcessRepository:
         for i in range(0, len(nodes), safe_chunk):
             chunk = nodes[i : i + safe_chunk]
             with self.db_manager.get_connection() as conn:
-                for node in chunk:
-                    self.upsert_process(conn, node)
+                # Ensure foreign key placeholder parents exist (only for parents outside this chunk)
+                chunk_guids = {n.process_guid for n in chunk}
+                parent_guids = {
+                    n.parent_process_guid
+                    for n in chunk
+                    if n.parent_process_guid and n.parent_process_guid not in chunk_guids
+                }
+                if parent_guids:
+                    cur = conn.cursor()
+                    placeholders = ",".join("?" for _ in parent_guids)
+                    cur.execute(
+                        f"SELECT process_guid FROM processes WHERE process_guid IN ({placeholders});",
+                        list(parent_guids),
+                    )
+                    existing = {row[0] for row in cur.fetchall()}
+                    missing = parent_guids - existing
+                    if missing:
+                        missing_nodes = {
+                            n.parent_process_guid: n
+                            for n in chunk
+                            if n.parent_process_guid in missing
+                        }
+                        placeholder_params = [
+                            (
+                                guid,
+                                n.parent_process_id or 0,
+                                n.computer,
+                                n.parent_image or "UNKNOWN_PARENT.EXE",
+                                n.parent_command_line,
+                                n.start_time.isoformat(),
+                            )
+                            for guid, n in missing_nodes.items()
+                        ]
+                        conn.executemany(
+                            """
+                            INSERT OR IGNORE INTO processes (
+                                process_guid, process_id, computer, image, command_line,
+                                start_time, is_synthesized, is_orphaned
+                            ) VALUES (?, ?, ?, ?, ?, ?, 1, 1);
+                            """,
+                            placeholder_params,
+                        )
+
+                params = [
+                    (
+                        node.process_guid,
+                        node.process_id,
+                        node.computer,
+                        node.image,
+                        node.command_line,
+                        node.current_directory,
+                        node.user,
+                        node.integrity_level,
+                        node.parent_process_guid,
+                        node.parent_process_id,
+                        node.parent_image,
+                        node.parent_command_line,
+                        node.start_time.isoformat(),
+                        node.end_time.isoformat() if node.end_time else None,
+                        node.exit_code,
+                        1 if node.is_synthesized else 0,
+                        1 if node.is_orphaned else 0,
+                        1 if node.is_anomalous else 0,
+                        json.dumps(node.anomaly_reasons) if node.anomaly_reasons else "[]",
+                    )
+                    for node in chunk
+                ]
+                cur = conn.cursor()
+                cur.executemany(UPSERT_PROCESS_SQL, params)
                 total_processed += len(chunk)
 
         return total_processed

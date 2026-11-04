@@ -191,7 +191,7 @@ def test_high_throughput_persistence_benchmark(temp_db: DatabaseManager, tmp_pat
     pipeline = IngestionPipeline(base_dir=tmp_path, db_manager=temp_db)
 
     t0 = time.perf_counter()
-    res = pipeline.ingest_and_persist(jsonl_file, chunk_size=1000)
+    res = pipeline.ingest_and_persist(jsonl_file, chunk_size=1000, sync_processes=False)
     elapsed = time.perf_counter() - t0
 
     assert res.stats.parsed_events == 5000

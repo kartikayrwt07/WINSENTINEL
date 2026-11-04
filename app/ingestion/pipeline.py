@@ -9,13 +9,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.analyzers.lineage_detector import LineageAnomaly, LineageAnomalyDetector
+from app.analyzers.process_analyzer import ProcessTreeGraph
 from app.database.connection import DatabaseManager
-from app.database.repository import EventRepository, ImportJobRepository
+from app.database.repository import EventRepository, ImportJobRepository, ProcessRepository
 from app.ingestion.base import BaseParser, RawRecord
 from app.ingestion.evtx_parser import EVTXParser
 from app.ingestion.json_parser import JSONParser
 from app.ingestion.xml_parser import XMLParser, parse_event_xml
-from app.models.events import NormalizedEvent
+from app.models.events import EventCategory, NormalizedEvent
 from app.models.fingerprint import compute_event_fingerprint
 from app.models.stats import ImportStatistics, QuarantineRecord
 from app.normalization.dispatcher import NormalizerDispatcher
@@ -27,7 +29,8 @@ logger = logging.getLogger(__name__)
 class IngestionResult(tuple):
     """Result container for ingest_and_persist: (events, stats, job_id).
 
-    Provides property accessors and duplicate/inserted counts.
+    Provides property accessors and duplicate/inserted counts, as well as
+    reconstructed process tree and detected lineage anomalies.
     """
 
     def __new__(
@@ -37,6 +40,8 @@ class IngestionResult(tuple):
         job_id: int,
         inserted_count: int = 0,
         duplicate_count: int = 0,
+        process_tree: ProcessTreeGraph | None = None,
+        anomalies: list[LineageAnomaly] | None = None,
     ):
         instance = super().__new__(cls, (events, stats, job_id))
         instance._events = events
@@ -44,6 +49,8 @@ class IngestionResult(tuple):
         instance._job_id = job_id
         instance._inserted_count = inserted_count
         instance._duplicate_count = duplicate_count
+        instance._process_tree = process_tree
+        instance._anomalies = anomalies if anomalies is not None else []
         return instance
 
     @property
@@ -65,6 +72,14 @@ class IngestionResult(tuple):
     @property
     def duplicate_count(self) -> int:
         return self._duplicate_count
+
+    @property
+    def process_tree(self) -> ProcessTreeGraph | None:
+        return self._process_tree
+
+    @property
+    def anomalies(self) -> list[LineageAnomaly]:
+        return self._anomalies
 
     def to_stats_tuple(self) -> tuple[ImportStatistics, int, int]:
         return (self._stats, self._job_id, self._inserted_count)
@@ -113,13 +128,23 @@ class IngestionPipeline:
         base_dir: Path | None = None,
         dispatcher: NormalizerDispatcher | None = None,
         db_manager: DatabaseManager | None = None,
+        process_repo: ProcessRepository | None = None,
     ) -> None:
         self.base_dir = base_dir
         self.dispatcher = dispatcher or NormalizerDispatcher()
         self.db_manager = db_manager
         self.event_repo = EventRepository(db_manager) if db_manager is not None else None
         self.job_repo = ImportJobRepository(db_manager) if db_manager is not None else None
+        self._process_repo = process_repo if process_repo is not None else (
+            ProcessRepository(db_manager) if db_manager is not None else None
+        )
+        self._detector = LineageAnomalyDetector()
         self.seen_hashes: set[str] = set()
+
+    @property
+    def process_repo(self) -> ProcessRepository | None:
+        """Process repository access."""
+        return self._process_repo
 
     def reset_deduplication(self) -> None:
         """Clear seen event fingerprints cache."""
@@ -320,6 +345,7 @@ class IngestionPipeline:
         chunk_size: int = 1000,
         db_manager: DatabaseManager | None = None,
         return_events: bool = True,
+        sync_processes: bool = True,
     ) -> IngestionResult | tuple[ImportStatistics, int, int]:
         """Ingest a log file, audit file and job lifecycles, and persist events to SQLite.
 
@@ -329,6 +355,7 @@ class IngestionPipeline:
         3. Streaming ingestion and normalization.
         4. High-throughput chunked batch insertion into the database with duplicate suppression.
         5. Reconciliation of job metrics and marking status COMPLETED (or FAILED on error).
+        6. Optional process tree reconstruction, suspicious lineage detection, and SQLite persistence.
 
         Returns:
             IngestionResult (unpackable as (events, stats, job_id)) or
@@ -353,6 +380,11 @@ class IngestionPipeline:
             self.job_repo
             if (active_db is self.db_manager and self.job_repo is not None)
             else ImportJobRepository(active_db)
+        )
+        process_repo = (
+            self.process_repo
+            if (active_db is self.db_manager and self.process_repo is not None)
+            else ProcessRepository(active_db)
         )
 
         effective_base_dir = base_dir if base_dir is not None else self.base_dir
@@ -438,6 +470,45 @@ class IngestionPipeline:
             )
             raise
 
+        process_tree: ProcessTreeGraph | None = None
+        anomalies: list[LineageAnomaly] = []
+
+        if sync_processes:
+            try:
+                process_events = [
+                    e for e in normalized_events
+                    if e.event_category == EventCategory.PROCESS
+                ]
+                if process_events:
+                    process_tree = ProcessTreeGraph()
+                    process_tree.build_from_events(process_events)
+                    anomalies = self._detector.evaluate_graph(process_tree)
+                    nodes_to_persist = list(process_tree._nodes.values())
+                    if nodes_to_persist:
+                        process_repo.upsert_processes_batch(
+                            nodes=nodes_to_persist,
+                            chunk_size=chunk_size,
+                        )
+
+                    for event in process_events:
+                        if event.event_id == 5 or event.event_type in ("PROCESS_TERMINATE", "PROCESS_TERMINATION"):
+                            exit_code = None
+                            if event.extra_fields and "ExitCode" in event.extra_fields:
+                                try:
+                                    exit_code = int(str(event.extra_fields["ExitCode"]), 0)
+                                except (ValueError, TypeError):
+                                    exit_code = None
+                            process_repo.update_process_termination(
+                                computer=event.computer,
+                                pid=event.process_id,
+                                termination_time=event.timestamp,
+                                exit_code=exit_code,
+                                process_guid=event.process_guid,
+                            )
+            except Exception as err:
+                logger.exception("Process sync failed in ingest_and_persist: %s", err)
+                raise
+
         if not return_events:
             return (stats, job_id, inserted)
 
@@ -447,4 +518,6 @@ class IngestionPipeline:
             job_id=job_id,
             inserted_count=inserted,
             duplicate_count=stats.duplicate_events,
+            process_tree=process_tree,
+            anomalies=anomalies,
         )

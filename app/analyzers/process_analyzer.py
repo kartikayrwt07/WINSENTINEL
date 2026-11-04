@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from pathlib import PureWindowsPath
 from typing import Any
 
 import networkx as nx
@@ -121,7 +122,7 @@ class ProcessTreeGraph:
         """Add or update a ProcessNode in the graph and connect causal edges."""
         guid = node.process_guid
         self._nodes[guid] = node
-        self._graph.add_node(guid, **node.model_dump())
+        self._graph.add_node(guid)
 
         # If parent already exists in graph, add causal edge
         if node.parent_process_guid:
@@ -321,18 +322,23 @@ class ProcessTreeGraph:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize graph into standard NetworkX node-link dictionary format."""
-        return nx.node_link_data(self._graph)
+        g = nx.DiGraph()
+        for guid, node in self._nodes.items():
+            g.add_node(guid, **node.model_dump(mode="json"))
+        g.add_edges_from(self._graph.edges())
+        return nx.node_link_data(g)
 
     def to_cytoscape(self) -> list[dict[str, Any]]:
         """Serialize graph into Cytoscape.js compatible elements list format."""
         elements: list[dict[str, Any]] = []
 
         for guid, node in self._nodes.items():
+            image_name = PureWindowsPath(node.image).name or node.image
             elements.append(
                 {
                     "data": {
                         "id": guid,
-                        "label": node.image.split("\\")[-1],
+                        "label": image_name,
                         "image": node.image,
                         "pid": node.process_id,
                         "user": node.user or "UNKNOWN",
@@ -359,17 +365,51 @@ class ProcessTreeGraph:
 
         return elements
 
-    def to_d3_tree(self, root_guid: str) -> dict[str, Any]:
-        """Serialize a process tree hierarchy rooted at root_guid into nested D3 JSON."""
-        node = self._nodes[root_guid]
-        children = self.get_children(root_guid)
+    def to_d3_tree(
+        self,
+        root_guid: str | None = None,
+    ) -> dict[str, Any] | list[dict[str, Any]]:
+        """Serialize process tree hierarchy into nested D3 JSON format.
 
-        return {
-            "name": node.image.split("\\")[-1],
-            "guid": node.process_guid,
-            "pid": node.process_id,
-            "command_line": node.command_line,
-            "is_anomalous": node.is_anomalous,
-            "is_synthesized": node.is_synthesized,
-            "children": [self.to_d3_tree(child.process_guid) for child in children],
-        }
+        If root_guid is provided, returns a nested hierarchy dictionary rooted at that node.
+        If root_guid is None, returns a list of nested hierarchies for all detected roots.
+        Guards against cycles using a recursion visited set.
+        """
+        if root_guid is None:
+            roots = self.get_roots()
+            return [self.to_d3_tree(root.process_guid) for root in roots]
+
+        if root_guid not in self._nodes:
+            return {}
+
+        def _build_d3(guid: str, visited: set[str]) -> dict[str, Any]:
+            node = self._nodes[guid]
+            name = PureWindowsPath(node.image).name or node.image
+            if guid in visited:
+                # Cycle prevention: return leaf node
+                return {
+                    "name": name,
+                    "guid": node.process_guid,
+                    "pid": node.process_id,
+                    "command_line": node.command_line,
+                    "is_anomalous": node.is_anomalous,
+                    "is_synthesized": node.is_synthesized,
+                    "children": [],
+                }
+
+            visited.add(guid)
+            children = self.get_children(guid)
+            return {
+                "name": name,
+                "guid": node.process_guid,
+                "pid": node.process_id,
+                "command_line": node.command_line,
+                "is_anomalous": node.is_anomalous,
+                "is_synthesized": node.is_synthesized,
+                "children": [
+                    _build_d3(child.process_guid, set(visited))
+                    for child in children
+                ],
+            }
+
+        return _build_d3(root_guid, set())
