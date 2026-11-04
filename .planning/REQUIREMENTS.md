@@ -66,7 +66,7 @@
 
 ### 8. Storage & Alert Management (ALERT)
 
-- [ ] **ALERT-01**: SQLite schema with migrations storing raw/normalized events, process trees, detection rules, alerts, evidence references, and analyst notes.
+- [x] **ALERT-01**: SQLite schema with migrations storing raw/normalized events, process trees, detection rules, alerts, evidence references, and analyst notes.
 - [ ] **ALERT-02**: Alert lifecycle tracking with status transitions: `New`, `Investigating`, `Escalated`, `Resolved`, `False Positive`.
 - [ ] **ALERT-03**: Analyst annotation interface to append notes and investigation disposition to alerts.
 - [ ] **ALERT-04**: Forensic evidence drill-down returning original event records and field values backing any alert.
@@ -126,7 +126,7 @@
 | NORM-06 | Phase 1 | Complete |
 | NORM-07 | Phase 1 | Complete |
 | NORM-08 | Phase 1 | Complete |
-| ALERT-01 | Phase 2 | Pending |
+| ALERT-01 | Phase 2 | Complete |
 | PROC-01 | Phase 3 | Pending |
 | PROC-02 | Phase 3 | Pending |
 | PROC-03 | Phase 3 | Pending |

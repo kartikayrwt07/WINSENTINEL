@@ -7,7 +7,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 ## Phases
 
 - [x] **Phase 1: Ingestion & Normalization Engine** - Parse EVTX, XML, and JSON logs; validate and normalize Sysmon and Security events into a unified typed schema. (completed 2026-11-04)
-- [ ] **Phase 2: Database Layer & Persistent Storage** - Implement SQLite schema, migrations, indexed queries, and audit/import logging.
+- [x] **Phase 2: Database Layer & Persistent Storage** - Implement SQLite schema, migrations, indexed queries, and audit/import logging. (completed 2026-11-04)
 - [ ] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage.
 - [ ] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules.
 - [ ] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks.
@@ -47,11 +47,11 @@ Plans:
   2. Composite indexing enables fast queries on timestamps, `process_guid`, `event_id`, and `computer`.
   3. Batch insertion supports bulk importing of thousands of events efficiently.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 02-01: SQLite Connection Manager, WAL Configuration, and Versioned Migration Runner (Wave 1)
-- [ ] 02-02: Event & Alert Repositories, Parameterized Query Builder, and Bulk Ingestion (Wave 2)
+- [x] 02-01: SQLite Connection Manager, WAL Configuration, and Versioned Migration Runner (Wave 1)
+- [x] 02-02: Event & Alert Repositories, Parameterized Query Builder, and Bulk Ingestion (Wave 2)
 
 ### Phase 3: Process Relationship Analyzer
 
