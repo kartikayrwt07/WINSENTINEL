@@ -67,8 +67,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Process tree graph model, PID reuse resolver, and ancestry walker using NetworkX.
-- [ ] 03-02: Suspicious parent-child relationship detector and tree serialization for storage/UI.
+- [ ] 03-01: Process Tree Graph Model, Synthetic GUIDs, PID Resolver, and Process Repository (Wave 1)
+- [ ] 03-02: Suspicious Lineage Anomaly Detector, Tree Serialization, and Pipeline Integration (Wave 2)
 
 ### Phase 4: Detection Rule Engine & Sysmon Core Library
 

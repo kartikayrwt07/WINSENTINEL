@@ -62,3 +62,4 @@ Phase 3 delivers the graph-based process execution hierarchy, ancestry tracking,
 - `.planning/phases/WINSENTINEL-02-database-layer-persistent-storage/02-VERIFICATION.md` — Schema and repository persistence contracts.
 
 </canonical_refs>
+
