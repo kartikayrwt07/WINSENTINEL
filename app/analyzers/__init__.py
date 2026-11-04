@@ -7,6 +7,7 @@ from app.analyzers.lineage_detector import (
     LineageAnomalyDetector,
     LineageRule,
 )
+from app.analyzers.persistence_analyzer import PersistenceAnalyzer
 from app.analyzers.pid_resolver import ProcessLifespan, TemporalPIDResolver
 from app.analyzers.powershell_analyzer import PowerShellThreatAnalyzer
 from app.analyzers.powershell_deobfuscator import (
@@ -27,6 +28,7 @@ __all__ = [
     "LineageAnomaly",
     "LineageAnomalyDetector",
     "LineageRule",
+    "PersistenceAnalyzer",
     "PowerShellDeobfuscator",
     "PowerShellThreatAnalyzer",
     "ProcessLifespan",

@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from app.analyzers.lineage_detector import LineageAnomaly, LineageAnomalyDetector
+from app.analyzers.persistence_analyzer import PersistenceAnalyzer
+from app.analyzers.powershell_analyzer import PowerShellThreatAnalyzer
 from app.analyzers.process_analyzer import ProcessTreeGraph
 from app.database.connection import DatabaseManager
 from app.database.repository import (
@@ -27,6 +29,8 @@ from app.ingestion.xml_parser import XMLParser, parse_event_xml
 from app.models.detection import DetectionMatch
 from app.models.events import EventCategory, NormalizedEvent
 from app.models.fingerprint import compute_event_fingerprint
+from app.models.persistence import PersistenceArtifact
+from app.models.powershell import PowerShellAnalysisResult
 from app.models.stats import ImportStatistics, QuarantineRecord
 from app.normalization.dispatcher import NormalizerDispatcher
 from app.utils.security import sanitize_input_path
@@ -53,6 +57,9 @@ class IngestionResult(tuple):
         alerts: list[dict[str, Any]] | None = None,
         matches: list[DetectionMatch] | None = None,
         alerts_created: int = 0,
+        powershell_results: list[PowerShellAnalysisResult] | None = None,
+        persistence_artifacts: list[PersistenceArtifact] | None = None,
+        analyzer_alerts_created: int = 0,
     ):
         instance = super().__new__(cls, (events, stats, job_id))
         instance._events = events
@@ -65,6 +72,9 @@ class IngestionResult(tuple):
         instance._alerts = alerts if alerts is not None else []
         instance._matches = matches if matches is not None else []
         instance._alerts_created = alerts_created if alerts_created else len(instance._alerts)
+        instance._powershell_results = powershell_results if powershell_results is not None else []
+        instance._persistence_artifacts = persistence_artifacts if persistence_artifacts is not None else []
+        instance._analyzer_alerts_created = analyzer_alerts_created
         return instance
 
     @property
@@ -107,6 +117,18 @@ class IngestionResult(tuple):
     def alerts_created(self) -> int:
         return self._alerts_created
 
+    @property
+    def powershell_results(self) -> list[PowerShellAnalysisResult]:
+        return self._powershell_results
+
+    @property
+    def persistence_artifacts(self) -> list[PersistenceArtifact]:
+        return self._persistence_artifacts
+
+    @property
+    def analyzer_alerts_created(self) -> int:
+        return self._analyzer_alerts_created
+
     def to_stats_tuple(self) -> tuple[ImportStatistics, int, int]:
         return (self._stats, self._job_id, self._inserted_count)
 
@@ -146,6 +168,44 @@ def _extract_json_fields(obj: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
     return system_fields, data_fields
 
 
+def _ensure_detection_rule(
+    alert_repo: AlertRepository,
+    rule_id: str,
+    title: str,
+    severity: str,
+    description: str = "",
+) -> None:
+    """Ensure a detection rule exists in detection_rules to satisfy foreign key constraints."""
+    if not rule_id or alert_repo.db_manager is None:
+        return
+    try:
+        with alert_repo.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM detection_rules WHERE id = ?;", (rule_id,))
+            if cur.fetchone() is None:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                cur.execute(
+                    """
+                    INSERT OR IGNORE INTO detection_rules (
+                        id, title, description, severity, status, author, rule_yaml, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        rule_id,
+                        title,
+                        description,
+                        severity,
+                        "active",
+                        "WinSentinel Threat Analyzer",
+                        f"id: {rule_id}\ntitle: {title}\nseverity: {severity}",
+                        now_iso,
+                        now_iso,
+                    ),
+                )
+    except Exception as err:
+        logger.debug("Failed to ensure detection rule %s: %s", rule_id, err)
+
+
 class IngestionPipeline:
     """Coordinates parsing, deduplication, normalization, and auditing of telemetry files."""
 
@@ -157,6 +217,8 @@ class IngestionPipeline:
         process_repo: ProcessRepository | None = None,
         detection_engine: DetectionEngine | None = None,
         alert_repo: AlertRepository | None = None,
+        powershell_analyzer: PowerShellThreatAnalyzer | None = None,
+        persistence_analyzer: PersistenceAnalyzer | None = None,
     ) -> None:
         self.base_dir = base_dir
         self.dispatcher = dispatcher or NormalizerDispatcher()
@@ -168,6 +230,12 @@ class IngestionPipeline:
         )
         self.alert_repo = alert_repo if alert_repo is not None else (
             AlertRepository(db_manager) if db_manager is not None else None
+        )
+        self.powershell_analyzer = (
+            powershell_analyzer if powershell_analyzer is not None else PowerShellThreatAnalyzer()
+        )
+        self.persistence_analyzer = (
+            persistence_analyzer if persistence_analyzer is not None else PersistenceAnalyzer()
         )
 
         if detection_engine is not None:
@@ -399,6 +467,7 @@ class IngestionPipeline:
         return_events: bool = True,
         sync_processes: bool = True,
         run_detections: bool = True,
+        run_analyzers: bool = True,
     ) -> IngestionResult | tuple[ImportStatistics, int, int]:
         """Ingest a log file, audit file and job lifecycles, and persist events to SQLite.
 
@@ -598,6 +667,96 @@ class IngestionPipeline:
                 logger.exception("Detection evaluation or persistence failed in ingest_and_persist: %s", err)
                 raise
 
+        pwsh_results: list[PowerShellAnalysisResult] = []
+        pers_artifacts: list[PersistenceArtifact] = []
+        analyzer_alerts_created: int = 0
+
+        if run_analyzers:
+            try:
+                for event in normalized_events:
+                    # 1. PowerShell Threat Analysis
+                    if self.powershell_analyzer is not None:
+                        pwsh_res = self.powershell_analyzer.analyze_event(event)
+                        if pwsh_res and pwsh_res.risk_score >= 30:
+                            if event_repo is not None:
+                                db_id = event_repo.get_db_id_by_hash(event.event_hash)
+                                if db_id is not None:
+                                    pwsh_res = pwsh_res.model_copy(update={"event_db_id": db_id})
+
+                            pwsh_results.append(pwsh_res)
+
+                            if alert_repo is not None:
+                                a_kwargs = pwsh_res.to_alert_dict()
+                                _ensure_detection_rule(
+                                    alert_repo=alert_repo,
+                                    rule_id=a_kwargs["rule_id"],
+                                    title=a_kwargs["title"],
+                                    severity=a_kwargs["severity"],
+                                    description=a_kwargs["description"],
+                                )
+                                alert_id = alert_repo.create_alert(**a_kwargs)
+                                analyzer_alerts_created += 1
+                                alerts_created += 1
+
+                                a_dict = dict(a_kwargs)
+                                a_dict["alert_id"] = alert_id
+                                a_dict["event_db_id"] = pwsh_res.event_db_id
+                                a_dict["investigation_steps"] = pwsh_res.investigation_steps
+                                alert_dicts.append(a_dict)
+
+                                if pwsh_res.event_db_id is not None and pwsh_res.event_db_id > 0:
+                                    for ev_item in pwsh_res.to_evidence_dicts(alert_id=alert_id):
+                                        alert_repo.link_alert_evidence(
+                                            alert_id=ev_item["alert_id"],
+                                            event_id=ev_item["event_id"],
+                                            matched_field=ev_item["matched_field"],
+                                            matched_value=ev_item["matched_value"],
+                                            explanation=ev_item["explanation"],
+                                        )
+
+                    # 2. Persistence Threat Analysis
+                    if self.persistence_analyzer is not None:
+                        pers_art = self.persistence_analyzer.analyze_event(event)
+                        if pers_art:
+                            if event_repo is not None:
+                                db_id = event_repo.get_db_id_by_hash(event.event_hash)
+                                if db_id is not None:
+                                    pers_art = pers_art.model_copy(update={"event_db_id": db_id})
+
+                            pers_artifacts.append(pers_art)
+
+                            if alert_repo is not None:
+                                a_kwargs = pers_art.to_alert_dict()
+                                _ensure_detection_rule(
+                                    alert_repo=alert_repo,
+                                    rule_id=a_kwargs["rule_id"],
+                                    title=a_kwargs["title"],
+                                    severity=a_kwargs["severity"],
+                                    description=a_kwargs["description"],
+                                )
+                                alert_id = alert_repo.create_alert(**a_kwargs)
+                                analyzer_alerts_created += 1
+                                alerts_created += 1
+
+                                a_dict = dict(a_kwargs)
+                                a_dict["alert_id"] = alert_id
+                                a_dict["event_db_id"] = pers_art.event_db_id
+                                a_dict["investigation_steps"] = pers_art.investigation_steps
+                                alert_dicts.append(a_dict)
+
+                                if pers_art.event_db_id is not None and pers_art.event_db_id > 0:
+                                    for ev_item in pers_art.to_evidence_dicts(alert_id=alert_id):
+                                        alert_repo.link_alert_evidence(
+                                            alert_id=ev_item["alert_id"],
+                                            event_id=ev_item["event_id"],
+                                            matched_field=ev_item["matched_field"],
+                                            matched_value=ev_item["matched_value"],
+                                            explanation=ev_item["explanation"],
+                                        )
+            except Exception as err:
+                logger.exception("Threat analyzer evaluation or persistence failed in ingest_and_persist: %s", err)
+                raise
+
         if not return_events:
             return (stats, job_id, inserted)
 
@@ -612,4 +771,7 @@ class IngestionPipeline:
             alerts=alert_dicts,
             matches=all_matches,
             alerts_created=alerts_created,
+            powershell_results=pwsh_results,
+            persistence_artifacts=pers_artifacts,
+            analyzer_alerts_created=analyzer_alerts_created,
         )
