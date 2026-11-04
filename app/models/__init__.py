@@ -1,5 +1,10 @@
 """Core data models and schemas for WinSentinel."""
 
+from app.models.detection import (
+    DetectionMatch,
+    EvidenceItem,
+    generate_explanation,
+)
 from app.models.events import (
     EventCategory,
     NormalizedEvent,
@@ -18,6 +23,9 @@ from app.models.rule import (
 from app.models.stats import ImportStatistics, QuarantineRecord
 
 __all__ = [
+    "DetectionMatch",
+    "EvidenceItem",
+    "generate_explanation",
     "EventCategory",
     "NormalizedEvent",
     "parse_sysmon_hashes",

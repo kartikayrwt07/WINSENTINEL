@@ -13,10 +13,24 @@ from app.detection.ast_parser import (
     Token,
     TokenType,
 )
+from app.detection.engine import (
+    CompiledRule,
+    DetectionEngine,
+)
 from app.detection.loader import (
     DuplicateRuleIdError,
     RuleLoader,
     RuleValidationError,
+)
+from app.detection.matcher import (
+    FIELD_ALIASES,
+    FieldMatcher,
+    pascal_to_snake,
+)
+from app.models.detection import (
+    DetectionMatch,
+    EvidenceItem,
+    generate_explanation,
 )
 from app.models.rule import (
     DetectionBlock,
@@ -29,11 +43,17 @@ from app.models.rule import (
 __all__ = [
     "ASTNode",
     "AndNode",
+    "CompiledRule",
     "ConditionParser",
     "ConditionTokenizer",
     "DetectionBlock",
+    "DetectionEngine",
+    "DetectionMatch",
     "DetectionRule",
     "DuplicateRuleIdError",
+    "EvidenceItem",
+    "FIELD_ALIASES",
+    "FieldMatcher",
     "IdentifierNode",
     "LogSource",
     "NotNode",
@@ -46,4 +66,6 @@ __all__ = [
     "RuleValidationError",
     "Token",
     "TokenType",
+    "generate_explanation",
+    "pascal_to_snake",
 ]
