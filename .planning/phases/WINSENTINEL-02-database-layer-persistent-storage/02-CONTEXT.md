@@ -63,3 +63,4 @@ Phase 2 establishes the persistent storage and relational query foundation for W
 - `.planning/phases/WINSENTINEL-01-ingestion-normalization-engine/01-VERIFICATION.md` — Normalization outputs to persist.
 
 </canonical_refs>
+

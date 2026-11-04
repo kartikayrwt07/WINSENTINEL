@@ -50,8 +50,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: SQLite schema definition, versioned migrations, and connection manager.
-- [ ] 02-02: Repository access layer for event ingestion, queries, and transaction management.
+- [ ] 02-01: SQLite Connection Manager, WAL Configuration, and Versioned Migration Runner (Wave 1)
+- [ ] 02-02: Event & Alert Repositories, Parameterized Query Builder, and Bulk Ingestion (Wave 2)
 
 ### Phase 3: Process Relationship Analyzer
 
