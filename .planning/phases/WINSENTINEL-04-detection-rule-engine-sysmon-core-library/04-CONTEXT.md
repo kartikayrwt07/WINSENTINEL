@@ -89,3 +89,4 @@ Phase 4 delivers the detection rule parsing, validation, matching, and explainab
 - `.planning/phases/WINSENTINEL-03-process-relationship-analyzer/03-VERIFICATION.md` — Process tree nodes, ancestry, and temporal PID resolution.
 
 </canonical_refs>
+
