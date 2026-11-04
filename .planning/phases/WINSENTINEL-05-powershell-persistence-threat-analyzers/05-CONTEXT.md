@@ -100,3 +100,4 @@ Phase 5 delivers specialized threat analysis modules for suspicious PowerShell a
 - `app/database/repository.py` — `AlertRepository` contracts.
 
 </canonical_refs>
+
