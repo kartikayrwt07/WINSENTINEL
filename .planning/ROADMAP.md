@@ -13,7 +13,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 - [x] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks. (completed 2026-11-04)
 - [x] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite. (completed 2026-11-04)
 - [x] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR. (completed 2026-11-05)
-- [ ] **Phase 8: SOC Investigation Dashboard & Timeline** - Build 10-page Streamlit dashboard featuring Event Explorer, Process Tree graphs, Timeline, Alerts, and Evaluation reports.
+- [x] **Phase 8: SOC Investigation Dashboard & Timeline** - Build 10-page Streamlit dashboard featuring Event Explorer, Process Tree graphs, Timeline, Alerts, and Evaluation reports. (completed 2026-11-05)
 
 ---
 
@@ -146,12 +146,12 @@ Plans:
   2. Interactive process graphs and timelines display nodes with full forensic drill-down.
   3. UI cleanly isolates presentation from backend detection services and SQLite storage.
 
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
-- [ ] 08-01: Streamlit layout shell, state management, Overview, and Event Explorer pages.
-- [ ] 08-02: Process Tree visualization, Timeline view, and Persistence analysis pages.
-- [ ] 08-03: Alert management, Detection Rules, Evaluation metrics, and Import history pages.
+- [x] 08-01: Streamlit layout shell, state management, Overview, and Event Explorer pages.
+- [x] 08-02: Process Tree visualization, Timeline view, and Persistence analysis pages.
+- [x] 08-03: Alert management, Detection Rules, Evaluation metrics, and Import history pages.
 
 ---
 *Roadmap defined: 2026-11-03*
