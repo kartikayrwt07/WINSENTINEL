@@ -9,7 +9,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 - [x] **Phase 1: Ingestion & Normalization Engine** - Parse EVTX, XML, and JSON logs; validate and normalize Sysmon and Security events into a unified typed schema. (completed 2026-11-04)
 - [x] **Phase 2: Database Layer & Persistent Storage** - Implement SQLite schema, migrations, indexed queries, and audit/import logging. (completed 2026-11-04)
 - [x] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage. (completed 2026-11-04)
-- [ ] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules.
+- [x] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules. (completed 2026-11-04)
 - [ ] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks.
 - [ ] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite.
 - [ ] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR.
@@ -81,12 +81,12 @@ Plans:
   3. Every rule hit produces a structured `DetectionMatch` containing the matched fields, values, rule ID, and investigation guidance.
   4. Core library of at least 15 verified rules targeting Sysmon activity runs against test data.
 
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
-- [ ] 04-01: YAML rule schema definition, validation, and rule loader.
-- [ ] 04-02: Condition evaluation engine (field matching, logic operators, exclusions).
-- [ ] 04-03: Core Sysmon detection rule repository (Process injection, LSASS access, Suspicious DLLs).
+- [x] 04-01: YAML rule schema definition, validation, and rule loader.
+- [x] 04-02: Condition evaluation engine (field matching, logic operators, exclusions).
+- [x] 04-03: Core Sysmon detection rule repository (Process injection, LSASS access, Suspicious DLLs).
 
 ### Phase 5: PowerShell & Persistence Threat Analyzers
 

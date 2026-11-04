@@ -35,11 +35,11 @@
 
 ### 4. Detection Rule Engine (RULE)
 
-- [ ] **RULE-01**: YAML-based Sigma-inspired rule schema parser with strict validation (rule metadata, event selection, conditions, severity, exclusions).
-- [ ] **RULE-02**: Field-matching engine supporting exact match, case-insensitive match, substring contains, regex patterns, and wildcards.
-- [ ] **RULE-03**: Rule exclusion filtering to eliminate known benign administrative baselines.
-- [ ] **RULE-04**: Detection match output containing matched rule ID, matched event records, exact matching field/value pairs, detection explanation, and investigation guidance.
-- [ ] **RULE-05**: Core rule library for process execution, privilege escalation, credential dumping access (EID 10 targeting LSASS), and lateral movement indicators.
+- [x] **RULE-01**: YAML-based Sigma-inspired rule schema parser with strict validation (rule metadata, event selection, conditions, severity, exclusions).
+- [x] **RULE-02**: Field-matching engine supporting exact match, case-insensitive match, substring contains, regex patterns, and wildcards.
+- [x] **RULE-03**: Rule exclusion filtering to eliminate known benign administrative baselines.
+- [x] **RULE-04**: Detection match output containing matched rule ID, matched event records, exact matching field/value pairs, detection explanation, and investigation guidance.
+- [x] **RULE-05**: Core rule library for process execution, privilege escalation, credential dumping access (EID 10 targeting LSASS), and lateral movement indicators.
 
 ### 5. PowerShell Threat Detection (PWSH)
 
@@ -132,11 +132,11 @@
 | PROC-03 | Phase 3 | Complete |
 | PROC-04 | Phase 3 | Complete |
 | PROC-05 | Phase 3 | Complete |
-| RULE-01 | Phase 4 | Pending |
-| RULE-02 | Phase 4 | Pending |
-| RULE-03 | Phase 4 | Pending |
-| RULE-04 | Phase 4 | Pending |
-| RULE-05 | Phase 4 | Pending |
+| RULE-01 | Phase 4 | Complete |
+| RULE-02 | Phase 4 | Complete |
+| RULE-03 | Phase 4 | Complete |
+| RULE-04 | Phase 4 | Complete |
+| RULE-05 | Phase 4 | Complete |
 | PWSH-01 | Phase 5 | Pending |
 | PWSH-02 | Phase 5 | Pending |
 | PWSH-03 | Phase 5 | Pending |
