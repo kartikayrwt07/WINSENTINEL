@@ -37,3 +37,4 @@ def format_table_html(
         f'</table>'
         f'</div>'
     )
+

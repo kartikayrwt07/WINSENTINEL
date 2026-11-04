@@ -15,3 +15,4 @@ __all__ = [
     "render_severity_badge",
     "render_status_badge",
 ]
+

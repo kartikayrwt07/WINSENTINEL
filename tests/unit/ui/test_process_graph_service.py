@@ -79,3 +79,4 @@ def test_process_graph_service_lineage(test_db: DatabaseManager):
     assert node_ids == {"{P1}", "{P2}", "{P3}"}
     assert len(tree["edges"]) == 2
     assert "{P2}" in tree["target_process"]["process_guid"]
+

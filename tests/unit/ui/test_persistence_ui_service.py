@@ -86,3 +86,4 @@ def test_persistence_service_categories(test_db: DatabaseManager):
 
     assert len(summary["scheduled_tasks"]) == 1
     assert summary["scheduled_tasks"][0]["task_name"] == "\\MaliciousJob"
+

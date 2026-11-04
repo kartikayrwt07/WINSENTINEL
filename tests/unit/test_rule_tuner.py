@@ -121,3 +121,4 @@ def test_tuner_detects_low_precision():
     recommendations = tuner.analyze_rules({"WS-SYS-010": rule_metric})
     assert len(recommendations) == 1
     assert recommendations[0].issue == "LOW_PRECISION"
+

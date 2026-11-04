@@ -63,3 +63,4 @@ def test_timeline_service_chronological_ordering(test_db: DatabaseManager):
     svg = svc.render_timeline_svg(items)
     assert "<svg" in svg
     assert "HOST-A" in svg
+

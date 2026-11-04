@@ -37,3 +37,4 @@ def test_evaluation_ui_service_run_and_format():
     # Test get_tuning_recommendations
     recs = service.get_tuning_recommendations(report)
     assert isinstance(recs, list)
+

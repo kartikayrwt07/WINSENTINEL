@@ -65,3 +65,4 @@ def save_benchmark_dataset(file_path: Path | str, events: list[BenchmarkEvent]) 
     with path.open("w", encoding="utf-8") as f:
         for event in events:
             f.write(event.model_dump_json() + "\n")
+

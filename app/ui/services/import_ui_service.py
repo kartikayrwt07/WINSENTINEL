@@ -118,3 +118,4 @@ class ImportUIService:
             "duplicate_events": row[10],
             "has_errors": bool(row[11]),
         }
+

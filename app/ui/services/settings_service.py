@@ -71,3 +71,4 @@ class SettingsService:
         """Update a platform configuration parameter."""
         state = get_stream_state()
         state[key] = value
+

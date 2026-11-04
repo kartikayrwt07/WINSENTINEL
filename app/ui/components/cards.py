@@ -24,3 +24,4 @@ def render_metric_card(
         f'{delta_html}'
         f'</div>'
     )
+

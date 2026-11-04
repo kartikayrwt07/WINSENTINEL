@@ -105,3 +105,4 @@ def test_cli_quality_gate_failure():
     ])
     # The command runs cleanly
     assert exit_code in (0, 1)
+

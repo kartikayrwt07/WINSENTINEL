@@ -146,3 +146,4 @@ class ProcessGraphService:
             "svg": svg,
             "target_process": target_dict,
         }
+

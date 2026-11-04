@@ -65,3 +65,4 @@ def test_save_and_reload_dataset(tmp_path: Path):
     reloaded = load_benchmark_dataset(temp_path)
     assert len(reloaded) == len(events)
     assert reloaded[0].label.expected_rules == events[0].label.expected_rules
+

@@ -75,3 +75,4 @@ def test_import_ui_service(test_db):
     errors = service.get_import_errors(job_id)
     assert len(errors) == 2
     assert errors[0]["record_id"] == 42
+
