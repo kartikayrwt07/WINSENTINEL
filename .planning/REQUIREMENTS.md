@@ -73,10 +73,10 @@
 
 ### 9. False-Positive & Rule Evaluation Engine (EVAL)
 
-- [ ] **EVAL-01**: Benchmark runner executing detection rules against labeled synthetic or public event datasets.
-- [ ] **EVAL-02**: Calculation of Confusion Matrix metrics per rule and globally: True Positives (TP), False Positives (FP), True Negatives (TN), False Negatives (FN).
-- [ ] **EVAL-03**: Performance reporting: Precision, Recall, F1-Score, and False-Positive Rate (FPR).
-- [ ] **EVAL-04**: Test suite containing benign administrative noise to validate suppression logic and prevent alert fatigue.
+- [x] **EVAL-01**: Benchmark runner executing detection rules against labeled synthetic or public event datasets.
+- [x] **EVAL-02**: Calculation of Confusion Matrix metrics per rule and globally: True Positives (TP), False Positives (FP), True Negatives (TN), False Negatives (FN).
+- [x] **EVAL-03**: Performance reporting: Precision, Recall, F1-Score, and False-Positive Rate (FPR).
+- [x] **EVAL-04**: Test suite containing benign administrative noise to validate suppression logic and prevent alert fatigue.
 
 ### 10. SOC Investigation Dashboard (UI)
 
@@ -154,10 +154,10 @@
 | ALERT-02 | Phase 6 | Complete |
 | ALERT-03 | Phase 6 | Complete |
 | ALERT-04 | Phase 6 | Complete |
-| EVAL-01 | Phase 7 | Pending |
-| EVAL-02 | Phase 7 | Pending |
-| EVAL-03 | Phase 7 | Pending |
-| EVAL-04 | Phase 7 | Pending |
+| EVAL-01 | Phase 7 | Complete |
+| EVAL-02 | Phase 7 | Complete |
+| EVAL-03 | Phase 7 | Complete |
+| EVAL-04 | Phase 7 | Complete |
 | UI-01 | Phase 8 | Pending |
 | UI-02 | Phase 8 | Pending |
 | UI-03 | Phase 8 | Pending |

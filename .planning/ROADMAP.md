@@ -12,7 +12,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 - [x] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules. (completed 2026-11-04)
 - [x] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks. (completed 2026-11-04)
 - [x] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite. (completed 2026-11-04)
-- [ ] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR.
+- [x] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR. (completed 2026-11-05)
 - [ ] **Phase 8: SOC Investigation Dashboard & Timeline** - Build 10-page Streamlit dashboard featuring Event Explorer, Process Tree graphs, Timeline, Alerts, and Evaluation reports.
 
 ---
@@ -130,11 +130,11 @@ Plans:
   2. Automated calculation of TP, FP, TN, FN, Precision, Recall, F1 score, and False Positive Rate per rule.
   3. Rule performance reports generated in JSON and structured Markdown for detection engineering tuning.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 07-01: Evaluation runner, labeled dataset fixtures, and confusion matrix calculator.
-- [ ] 07-02: Evaluation reporting, tuning recommendation generator, and benchmark CLI.
+- [x] 07-01: Evaluation runner, labeled dataset fixtures, and confusion matrix calculator.
+- [x] 07-02: Evaluation reporting, tuning recommendation generator, and benchmark CLI.
 
 ### Phase 8: SOC Investigation Dashboard & Timeline
 

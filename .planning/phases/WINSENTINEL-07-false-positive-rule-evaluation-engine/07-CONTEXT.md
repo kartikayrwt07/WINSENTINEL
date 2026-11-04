@@ -102,3 +102,4 @@ Phase 7 delivers a scientific detection evaluation and false-positive benchmarki
 - `rules/sysmon/` — Existing 16 verified Sysmon detection rules.
 
 </canonical_refs>
+
