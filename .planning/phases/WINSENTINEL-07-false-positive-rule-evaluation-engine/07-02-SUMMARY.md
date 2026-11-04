@@ -50,3 +50,4 @@ Total repository test suite: **340 tests passing** in 14.8s.
 | **EVAL-02** | Complete | Per-rule and overall Confusion Matrix (TP, FP, TN, FN) accurately tracked. |
 | **EVAL-03** | Complete | Precision, Recall, F1, FPR, and Accuracy calculated, exported to JSON and Markdown. |
 | **EVAL-04** | Complete | Test suite on `benign_admin_noise.jsonl` demonstrates 0 false positives (FPR = 0.0%). |
+
