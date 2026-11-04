@@ -667,6 +667,32 @@ class AlertRepository:
                 (status, now_utc, alert_id),
             )
 
+    def touch_alert(
+        self,
+        alert_id: int,
+        last_seen: str | datetime,
+        count_increment: int = 1,
+    ) -> None:
+        """Atomically increment event_count and update last_seen and updated_at timestamps."""
+        now_utc = datetime.now(timezone.utc).isoformat()
+        last_seen_str = (
+            last_seen.isoformat()
+            if isinstance(last_seen, datetime)
+            else str(last_seen)
+        )
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                UPDATE alerts
+                SET event_count = event_count + ?,
+                    last_seen = ?,
+                    updated_at = ?
+                WHERE id = ?;
+                """,
+                (count_increment, last_seen_str, now_utc, alert_id),
+            )
+
     def link_alert_evidence(
         self,
         alert_id: int,
@@ -818,6 +844,116 @@ class AlertRepository:
                 page_size=safe_page_size,
                 total_pages=total_pages,
             )
+
+
+class InvestigationRepository:
+    """Manages forensic investigations, incident escalations, and status tracking."""
+
+    def __init__(self, db_manager: DatabaseManager) -> None:
+        self.db_manager = db_manager
+
+    def create_investigation(
+        self,
+        title: str,
+        priority: str = "Medium",
+        lead_analyst: str | None = None,
+        summary: str | None = None,
+        status: str = "Open",
+        created_at: datetime | str | None = None,
+    ) -> int:
+        """Create a new investigation record and return its primary key ID."""
+        now_utc = datetime.now(timezone.utc).isoformat()
+        created_at_str = (
+            created_at.isoformat()
+            if isinstance(created_at, datetime)
+            else (str(created_at) if created_at else now_utc)
+        )
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO investigations (
+                    title, status, priority, lead_analyst, summary,
+                    created_at, updated_at, closed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL);
+                """,
+                (title, status, priority, lead_analyst, summary, created_at_str, now_utc),
+            )
+            return int(cur.lastrowid)
+
+    def get_investigation(self, investigation_id: int) -> dict[str, Any] | None:
+        """Fetch investigation record and all associated analyst notes."""
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM investigations WHERE id = ?;", (investigation_id,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            inv_dict = dict(row)
+            cur.execute(
+                "SELECT * FROM analyst_notes WHERE investigation_id = ? ORDER BY created_at ASC;",
+                (investigation_id,),
+            )
+            inv_dict["notes"] = [dict(r) for r in cur.fetchall()]
+            return inv_dict
+
+    def list_investigations(
+        self,
+        status: str | None = None,
+        priority: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List investigations with optional status and priority filtering."""
+        query = "SELECT * FROM investigations"
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        if priority:
+            clauses.append("priority = ?")
+            params.append(priority)
+
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY created_at DESC;"
+
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(query, params)
+            return [dict(r) for r in cur.fetchall()]
+
+    def update_investigation_status(
+        self,
+        investigation_id: int,
+        status: str,
+        closed_at: datetime | str | None = None,
+    ) -> bool:
+        """Update investigation status and set closed_at timestamp if closing."""
+        now_utc = datetime.now(timezone.utc).isoformat()
+        closed_at_str: str | None = None
+        if closed_at is not None:
+            closed_at_str = (
+                closed_at.isoformat()
+                if isinstance(closed_at, datetime)
+                else str(closed_at)
+            )
+        elif status.lower() in ("closed", "resolved", "completed"):
+            closed_at_str = now_utc
+
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                UPDATE investigations
+                SET status = ?,
+                    updated_at = ?,
+                    closed_at = coalesce(?, closed_at)
+                WHERE id = ?;
+                """,
+                (status, now_utc, closed_at_str, investigation_id),
+            )
+            return cur.rowcount > 0
 
 
 class ProcessRepository:

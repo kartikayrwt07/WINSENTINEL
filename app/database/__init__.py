@@ -16,6 +16,7 @@ from app.database.repository import (
     EventRepository,
     ImportedFileRepository,
     ImportJobRepository,
+    InvestigationRepository,
     ProcessRepository,
 )
 
@@ -27,6 +28,7 @@ __all__ = [
     "EventRepository",
     "ImportedFileRepository",
     "ImportJobRepository",
+    "InvestigationRepository",
     "MigrationRecord",
     "MigrationRunner",
     "PaginatedResult",

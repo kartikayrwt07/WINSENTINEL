@@ -105,6 +105,21 @@ class AttackChainEngine:
         )
         self.default_window_minutes: int = max(window_minutes, default_window_minutes)
 
+    def correlate(
+        self,
+        events: list[NormalizedEvent],
+        matches: list[DetectionMatch] | None = None,
+        alerts: list[dict[str, Any]] | None = None,
+        process_tree: ProcessTreeGraph | None = None,
+    ) -> list[CompoundIncident]:
+        """Alias for evaluate(), adhering to correlation interface."""
+        return self.evaluate(
+            events=events,
+            matches=matches,
+            process_tree=process_tree,
+            alerts=alerts,
+        )
+
     def evaluate(
         self,
         events: list[NormalizedEvent],

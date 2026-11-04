@@ -1,5 +1,9 @@
 """Event correlation and multi-stage attack detection package for WinSentinel."""
 
+from app.correlation.alert_manager import (
+    AlertManager,
+    InvalidStatusTransitionError,
+)
 from app.correlation.chain_engine import AttackChainEngine
 from app.correlation.chains import (
     CHAIN_CREDDUMP_LAT,
@@ -18,6 +22,8 @@ from app.models.incident import (
 )
 
 __all__ = [
+    "AlertManager",
+    "InvalidStatusTransitionError",
     "AttackChainEngine",
     "AttackChainDefinition",
     "ChainStageDefinition",

@@ -13,11 +13,14 @@ from app.analyzers.lineage_detector import LineageAnomaly, LineageAnomalyDetecto
 from app.analyzers.persistence_analyzer import PersistenceAnalyzer
 from app.analyzers.powershell_analyzer import PowerShellThreatAnalyzer
 from app.analyzers.process_analyzer import ProcessTreeGraph
+from app.correlation.alert_manager import AlertManager
+from app.correlation.chain_engine import AttackChainEngine
 from app.database.connection import DatabaseManager
 from app.database.repository import (
     AlertRepository,
     EventRepository,
     ImportJobRepository,
+    InvestigationRepository,
     ProcessRepository,
 )
 from app.detection.engine import DetectionEngine
@@ -29,6 +32,7 @@ from app.ingestion.xml_parser import XMLParser, parse_event_xml
 from app.models.detection import DetectionMatch
 from app.models.events import EventCategory, NormalizedEvent
 from app.models.fingerprint import compute_event_fingerprint
+from app.models.incident import CompoundIncident
 from app.models.persistence import PersistenceArtifact
 from app.models.powershell import PowerShellAnalysisResult
 from app.models.stats import ImportStatistics, QuarantineRecord
@@ -60,6 +64,9 @@ class IngestionResult(tuple):
         powershell_results: list[PowerShellAnalysisResult] | None = None,
         persistence_artifacts: list[PersistenceArtifact] | None = None,
         analyzer_alerts_created: int = 0,
+        incidents: list[CompoundIncident] | None = None,
+        investigations_created: int = 0,
+        deduplicated_alerts_count: int = 0,
     ):
         instance = super().__new__(cls, (events, stats, job_id))
         instance._events = events
@@ -75,6 +82,9 @@ class IngestionResult(tuple):
         instance._powershell_results = powershell_results if powershell_results is not None else []
         instance._persistence_artifacts = persistence_artifacts if persistence_artifacts is not None else []
         instance._analyzer_alerts_created = analyzer_alerts_created
+        instance._incidents = incidents if incidents is not None else []
+        instance._investigations_created = investigations_created
+        instance._deduplicated_alerts_count = deduplicated_alerts_count
         return instance
 
     @property
@@ -128,6 +138,22 @@ class IngestionResult(tuple):
     @property
     def analyzer_alerts_created(self) -> int:
         return self._analyzer_alerts_created
+
+    @property
+    def incidents(self) -> list[CompoundIncident]:
+        return self._incidents
+
+    @property
+    def compound_incidents(self) -> list[CompoundIncident]:
+        return self._incidents
+
+    @property
+    def investigations_created(self) -> int:
+        return self._investigations_created
+
+    @property
+    def deduplicated_alerts_count(self) -> int:
+        return self._deduplicated_alerts_count
 
     def to_stats_tuple(self) -> tuple[ImportStatistics, int, int]:
         return (self._stats, self._job_id, self._inserted_count)
@@ -219,6 +245,9 @@ class IngestionPipeline:
         alert_repo: AlertRepository | None = None,
         powershell_analyzer: PowerShellThreatAnalyzer | None = None,
         persistence_analyzer: PersistenceAnalyzer | None = None,
+        alert_manager: AlertManager | None = None,
+        attack_chain_engine: AttackChainEngine | None = None,
+        investigation_repo: InvestigationRepository | None = None,
     ) -> None:
         self.base_dir = base_dir
         self.dispatcher = dispatcher or NormalizerDispatcher()
@@ -231,11 +260,20 @@ class IngestionPipeline:
         self.alert_repo = alert_repo if alert_repo is not None else (
             AlertRepository(db_manager) if db_manager is not None else None
         )
+        self.investigation_repo = investigation_repo if investigation_repo is not None else (
+            InvestigationRepository(db_manager) if db_manager is not None else None
+        )
         self.powershell_analyzer = (
             powershell_analyzer if powershell_analyzer is not None else PowerShellThreatAnalyzer()
         )
         self.persistence_analyzer = (
             persistence_analyzer if persistence_analyzer is not None else PersistenceAnalyzer()
+        )
+        self.alert_manager = alert_manager if alert_manager is not None else (
+            AlertManager(db_manager) if db_manager is not None else None
+        )
+        self.attack_chain_engine = (
+            attack_chain_engine if attack_chain_engine is not None else AttackChainEngine()
         )
 
         if detection_engine is not None:
@@ -468,6 +506,7 @@ class IngestionPipeline:
         sync_processes: bool = True,
         run_detections: bool = True,
         run_analyzers: bool = True,
+        run_correlations: bool = True,
     ) -> IngestionResult | tuple[ImportStatistics, int, int]:
         """Ingest a log file, audit file and job lifecycles, and persist events to SQLite.
 
@@ -479,6 +518,7 @@ class IngestionPipeline:
         5. Reconciliation of job metrics and marking status COMPLETED (or FAILED on error).
         6. Optional process tree reconstruction, suspicious lineage detection, and SQLite persistence.
         7. Optional streaming DetectionEngine rule evaluation and SQLite alert/evidence persistence.
+        8. Windowed alert deduplication via AlertManager and multi-stage attack correlation.
 
         Returns:
             IngestionResult (unpackable as (events, stats, job_id)) or
@@ -513,6 +553,16 @@ class IngestionPipeline:
             self.alert_repo
             if (active_db is self.db_manager and self.alert_repo is not None)
             else AlertRepository(active_db)
+        )
+        active_alert_manager = (
+            self.alert_manager
+            if (active_db is self.db_manager and self.alert_manager is not None)
+            else AlertManager(active_db)
+        )
+        active_investigation_repo = (
+            self.investigation_repo
+            if (active_db is self.db_manager and self.investigation_repo is not None)
+            else InvestigationRepository(active_db)
         )
 
         effective_base_dir = base_dir if base_dir is not None else self.base_dir
@@ -640,6 +690,7 @@ class IngestionPipeline:
         all_matches: list[DetectionMatch] = []
         alert_dicts: list[dict[str, Any]] = []
         alerts_created: int = 0
+        deduplicated_alerts_count: int = 0
 
         if run_detections and self.detection_engine is not None and alert_repo is not None:
             try:
@@ -654,7 +705,25 @@ class IngestionPipeline:
                             ]
                         all_matches.extend(ev_matches)
 
-                if all_matches:
+                        if active_alert_manager is not None:
+                            for m in ev_matches:
+                                aid, is_dup = active_alert_manager.process_match(
+                                    match=m,
+                                    event=event,
+                                    event_db_id=m.event_db_id,
+                                )
+                                if is_dup:
+                                    deduplicated_alerts_count += 1
+                                else:
+                                    alerts_created += 1
+
+                                a_dict = m.to_alert_dict()
+                                a_dict["alert_id"] = aid
+                                a_dict["event_db_id"] = m.event_db_id
+                                a_dict["investigation_steps"] = m.investigation_steps
+                                alert_dicts.append(a_dict)
+
+                if all_matches and active_alert_manager is None:
                     alert_ids = self.detection_engine.persist_matches(all_matches, alert_repo)
                     alerts_created = len(alert_ids)
                     for aid, m in zip(alert_ids, all_matches):
@@ -685,7 +754,40 @@ class IngestionPipeline:
 
                             pwsh_results.append(pwsh_res)
 
-                            if alert_repo is not None:
+                            if active_alert_manager is not None:
+                                a_kwargs = pwsh_res.to_alert_dict()
+                                evidence_items = (
+                                    pwsh_res.to_evidence_dicts(alert_id=0)
+                                    if pwsh_res.event_db_id
+                                    else []
+                                )
+                                aid, is_dup = active_alert_manager.process_alert(
+                                    rule_id=a_kwargs["rule_id"],
+                                    title=a_kwargs["title"],
+                                    severity=a_kwargs["severity"],
+                                    computer=a_kwargs["computer"],
+                                    user=a_kwargs.get("user"),
+                                    process_guid=a_kwargs.get("process_guid"),
+                                    description=a_kwargs.get("description"),
+                                    first_seen=a_kwargs.get("first_seen"),
+                                    last_seen=a_kwargs.get("last_seen"),
+                                    mitre_tactics=a_kwargs.get("mitre_tactics"),
+                                    mitre_techniques=a_kwargs.get("mitre_techniques"),
+                                    evidence_items=evidence_items,
+                                )
+                                if is_dup:
+                                    deduplicated_alerts_count += 1
+                                else:
+                                    analyzer_alerts_created += 1
+                                    alerts_created += 1
+
+                                a_dict = dict(a_kwargs)
+                                a_dict["alert_id"] = aid
+                                a_dict["event_db_id"] = pwsh_res.event_db_id
+                                a_dict["investigation_steps"] = pwsh_res.investigation_steps
+                                alert_dicts.append(a_dict)
+
+                            elif alert_repo is not None:
                                 a_kwargs = pwsh_res.to_alert_dict()
                                 _ensure_detection_rule(
                                     alert_repo=alert_repo,
@@ -725,7 +827,40 @@ class IngestionPipeline:
 
                             pers_artifacts.append(pers_art)
 
-                            if alert_repo is not None:
+                            if active_alert_manager is not None:
+                                a_kwargs = pers_art.to_alert_dict()
+                                evidence_items = (
+                                    pers_art.to_evidence_dicts(alert_id=0)
+                                    if pers_art.event_db_id
+                                    else []
+                                )
+                                aid, is_dup = active_alert_manager.process_alert(
+                                    rule_id=a_kwargs["rule_id"],
+                                    title=a_kwargs["title"],
+                                    severity=a_kwargs["severity"],
+                                    computer=a_kwargs["computer"],
+                                    user=a_kwargs.get("user"),
+                                    process_guid=a_kwargs.get("process_guid"),
+                                    description=a_kwargs.get("description"),
+                                    first_seen=a_kwargs.get("first_seen"),
+                                    last_seen=a_kwargs.get("last_seen"),
+                                    mitre_tactics=a_kwargs.get("mitre_tactics"),
+                                    mitre_techniques=a_kwargs.get("mitre_techniques"),
+                                    evidence_items=evidence_items,
+                                )
+                                if is_dup:
+                                    deduplicated_alerts_count += 1
+                                else:
+                                    analyzer_alerts_created += 1
+                                    alerts_created += 1
+
+                                a_dict = dict(a_kwargs)
+                                a_dict["alert_id"] = aid
+                                a_dict["event_db_id"] = pers_art.event_db_id
+                                a_dict["investigation_steps"] = pers_art.investigation_steps
+                                alert_dicts.append(a_dict)
+
+                            elif alert_repo is not None:
                                 a_kwargs = pers_art.to_alert_dict()
                                 _ensure_detection_rule(
                                     alert_repo=alert_repo,
@@ -757,6 +892,99 @@ class IngestionPipeline:
                 logger.exception("Threat analyzer evaluation or persistence failed in ingest_and_persist: %s", err)
                 raise
 
+        correlated_incidents: list[CompoundIncident] = []
+        investigations_created: int = 0
+
+        if run_correlations and self.attack_chain_engine is not None:
+            try:
+                ptree = process_tree
+                if ptree is None:
+                    process_events = [
+                        e for e in normalized_events
+                        if e.event_category == EventCategory.PROCESS
+                    ]
+                    if process_events:
+                        ptree = ProcessTreeGraph()
+                        ptree.build_from_events(process_events)
+
+                incidents = self.attack_chain_engine.correlate(
+                    events=normalized_events,
+                    matches=all_matches,
+                    alerts=alert_dicts,
+                    process_tree=ptree,
+                )
+
+                if incidents and event_repo is not None:
+                    rec_to_db: dict[int, int] = {}
+                    for ev in normalized_events:
+                        rec_key = ev.record_id if ev.record_id is not None else ev.event_id
+                        if rec_key not in rec_to_db:
+                            did = event_repo.get_db_id_by_hash(ev.event_hash)
+                            if did is not None:
+                                rec_to_db[rec_key] = did
+
+                    updated_incidents: list[CompoundIncident] = []
+                    for inc in incidents:
+                        new_stages = []
+                        all_inc_eids = []
+                        for s in inc.stages:
+                            mapped_eids = [rec_to_db.get(eid, eid) for eid in s.event_ids]
+                            all_inc_eids.extend(mapped_eids)
+                            new_stages.append(s.model_copy(update={"event_ids": mapped_eids}))
+                        inc = inc.model_copy(update={
+                            "stages": new_stages,
+                            "participating_event_ids": list(dict.fromkeys(all_inc_eids)),
+                        })
+                        updated_incidents.append(inc)
+                    incidents = updated_incidents
+
+                for inc in incidents:
+                    # 1. Persist to investigations table
+                    if active_investigation_repo is not None:
+                        inv_data = inc.to_investigation_dict()
+                        active_investigation_repo.create_investigation(
+                            title=inv_data["title"],
+                            priority=inv_data["priority"],
+                            lead_analyst=inv_data.get("lead_analyst"),
+                            summary=inv_data["summary"],
+                            status=inv_data.get("status", "Open"),
+                            created_at=inv_data.get("created_at"),
+                        )
+                        investigations_created += 1
+
+                    # 2. Persist top-level alert into alerts table with rule_id=chain.chain_id and severity="Critical"
+                    alert_kwargs = inc.to_alert_dict()
+                    _ensure_detection_rule(
+                        alert_repo=alert_repo,
+                        rule_id=inc.chain_id,
+                        title=inc.chain_name,
+                        severity=inc.severity,
+                        description=inc.summary_narrative,
+                    )
+                    inc_alert_id = alert_repo.create_alert(**alert_kwargs)
+                    alerts_created += 1
+
+                    # 3. Link participating events to alert_evidence
+                    for ev_item in inc.to_evidence_dicts(alert_id=inc_alert_id):
+                        if ev_item.get("event_id") and ev_item["event_id"] > 0:
+                            alert_repo.link_alert_evidence(
+                                alert_id=inc_alert_id,
+                                event_id=ev_item["event_id"],
+                                matched_field=ev_item.get("matched_field"),
+                                matched_value=ev_item.get("matched_value"),
+                                explanation=ev_item.get("explanation"),
+                            )
+
+                    # 4. Record alert dictionary and incident
+                    inc_a_dict = dict(alert_kwargs)
+                    inc_a_dict["alert_id"] = inc_alert_id
+                    alert_dicts.append(inc_a_dict)
+                    correlated_incidents.append(inc)
+
+            except Exception as err:
+                logger.exception("Attack chain correlation failed in ingest_and_persist: %s", err)
+                raise
+
         if not return_events:
             return (stats, job_id, inserted)
 
@@ -774,4 +1002,7 @@ class IngestionPipeline:
             powershell_results=pwsh_results,
             persistence_artifacts=pers_artifacts,
             analyzer_alerts_created=analyzer_alerts_created,
+            incidents=correlated_incidents,
+            investigations_created=investigations_created,
+            deduplicated_alerts_count=deduplicated_alerts_count,
         )
