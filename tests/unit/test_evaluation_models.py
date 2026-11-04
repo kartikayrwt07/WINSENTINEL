@@ -100,15 +100,24 @@ def test_rule_evaluation_metrics_and_report_serialization():
         overall_recall=10 / 14,
         overall_f1_score=0.8,
         overall_fpr=1 / 86,
+        overall_accuracy=95 / 100,
         rule_metrics={"WS-SYS-006": rule_metric},
         tuning_recommendations=[tuning],
         passed_quality_gates=True,
     )
 
+    # Test Markdown formatting
+    md = report.to_markdown()
+    assert "# WinSentinel Detection Evaluation Report" in md
+    assert "WS-SYS-006" in md
+    assert "LOW_PRECISION" in md
+    assert "Filter out interactive console sessions" in md
+
     # Test JSON serialization roundtrip
     json_data = report.model_dump_json()
     deserialized = EvaluationReport.model_validate_json(json_data)
     assert deserialized.dataset_name == "attacks_v1"
+    assert deserialized.overall_accuracy == pytest.approx(0.95)
     assert "WS-SYS-006" in deserialized.rule_metrics
     assert deserialized.rule_metrics["WS-SYS-006"].matrix.tp == 10
     assert len(deserialized.tuning_recommendations) == 1

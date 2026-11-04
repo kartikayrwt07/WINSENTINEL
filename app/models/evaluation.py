@@ -126,6 +126,78 @@ class EvaluationReport(BaseModel):
     overall_recall: float
     overall_f1_score: float
     overall_fpr: float
+    overall_accuracy: float = 0.0
     rule_metrics: dict[str, RuleEvaluationMetrics] = Field(default_factory=dict)
     tuning_recommendations: list[TuningRecommendation] = Field(default_factory=list)
     passed_quality_gates: bool = True
+
+    def to_markdown(self) -> str:
+        """Format an evaluation report into a human-readable Markdown summary."""
+        gate_status = "PASSED" if self.passed_quality_gates else "FAILED"
+        lines = [
+            "# WinSentinel Detection Evaluation Report",
+            "",
+            f"- **Dataset:** {self.dataset_name}",
+            f"- **Timestamp:** {self.timestamp.isoformat()}",
+            f"- **Quality Gate:** {gate_status}",
+            f"- **Total Events:** {self.total_events} (Malicious: {self.malicious_events}, Benign: {self.benign_events})",
+            f"- **Rules Evaluated:** {self.total_rules_evaluated}",
+            "",
+            "## Overall Detection Performance",
+            "",
+            "| Metric | Value |",
+            "| :--- | :--- |",
+            f"| **Precision** | {self.overall_precision:.2%} |",
+            f"| **Recall** | {self.overall_recall:.2%} |",
+            f"| **F1-Score** | {self.overall_f1_score:.2%} |",
+            f"| **False Positive Rate (FPR)** | {self.overall_fpr:.2%} |",
+            f"| **Accuracy** | {self.overall_accuracy:.2%} |",
+            "",
+            "### Confusion Matrix",
+            "",
+            "| Classification | Count |",
+            "| :--- | :--- |",
+            f"| True Positives (TP) | {self.overall_matrix.tp} |",
+            f"| False Positives (FP) | {self.overall_matrix.fp} |",
+            f"| True Negatives (TN) | {self.overall_matrix.tn} |",
+            f"| False Negatives (FN) | {self.overall_matrix.fn} |",
+            "",
+            "## Per-Rule Breakdown",
+            "",
+            "| Rule ID | Title | Severity | TP | FP | TN | FN | Precision | Recall | F1 | FPR | Status |",
+            "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |",
+        ]
+
+        if not self.rule_metrics:
+            lines.append("| - | *No rules evaluated* | - | - | - | - | - | - | - | - | - | - |")
+        else:
+            for rid, rm in sorted(self.rule_metrics.items()):
+                status = "ACTIVE"
+                if rm.is_dead:
+                    status = "DEAD"
+                elif rm.is_noisy:
+                    status = "NOISY"
+
+                lines.append(
+                    f"| `{rm.rule_id}` | {rm.rule_title} | {rm.severity.upper()} | "
+                    f"{rm.matrix.tp} | {rm.matrix.fp} | {rm.matrix.tn} | {rm.matrix.fn} | "
+                    f"{rm.precision:.2%} | {rm.recall:.2%} | {rm.f1_score:.2%} | {rm.false_positive_rate:.2%} | {status} |"
+                )
+
+        lines.append("")
+        lines.append("## Tuning Recommendations")
+        lines.append("")
+        if not self.tuning_recommendations:
+            lines.append("No tuning recommendations. All evaluated rules conform to detection thresholds.")
+        else:
+            for rec in self.tuning_recommendations:
+                lines.append(f"### `{rec.rule_id}` - {rec.rule_title} [{rec.severity.upper()}]")
+                lines.append(f"- **Issue:** {rec.issue}")
+                lines.append(f"- **Description:** {rec.description}")
+                if rec.suggested_actions:
+                    lines.append("- **Suggested Actions:**")
+                    for action in rec.suggested_actions:
+                        lines.append(f"  - {action}")
+                lines.append("")
+
+        return "\n".join(lines)

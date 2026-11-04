@@ -6,8 +6,9 @@ from app.evaluation.metrics import (
     aggregate_matrices,
     build_rule_metrics,
     calculate_metrics,
+    calculate_overall_metrics,
 )
-from app.models.evaluation import ConfusionMatrix
+from app.models.evaluation import ConfusionMatrix, RuleEvaluationMetrics
 
 
 def test_calculate_metrics_standard():
@@ -116,3 +117,31 @@ def test_aggregate_matrices():
     assert agg.tn == 120
     assert agg.fn == 4
     assert agg.total == 142
+
+
+def test_calculate_overall_metrics():
+    cm1 = ConfusionMatrix(tp=10, fp=2, tn=80, fn=8)
+    cm2 = ConfusionMatrix(tp=20, fp=3, tn=70, fn=7)
+
+    rm1 = build_rule_metrics("R1", "Rule 1", "high", cm1)
+    rm2 = build_rule_metrics("R2", "Rule 2", "medium", cm2)
+
+    overall_cm, precision, recall, f1, fpr, accuracy = calculate_overall_metrics(
+        {"R1": rm1, "R2": rm2}
+    )
+
+    assert overall_cm.tp == 30
+    assert overall_cm.fp == 5
+    assert overall_cm.tn == 150
+    assert overall_cm.fn == 15
+    assert overall_cm.total == 200
+
+    # Precision: 30 / 35
+    assert precision == pytest.approx(30 / 35)
+    # Recall: 30 / 45
+    assert recall == pytest.approx(30 / 45)
+    # FPR: 5 / 155
+    assert fpr == pytest.approx(5 / 155)
+    # Accuracy: 180 / 200 = 0.9
+    assert accuracy == pytest.approx(0.9)
+

@@ -109,3 +109,23 @@ def aggregate_matrices(matrices: list[ConfusionMatrix]) -> ConfusionMatrix:
         tn=total_tn,
         fn=total_fn,
     )
+
+
+def calculate_overall_metrics(
+    rule_metrics_or_matrices: dict[str, RuleEvaluationMetrics] | list[ConfusionMatrix],
+) -> tuple[ConfusionMatrix, float, float, float, float, float]:
+    """Aggregate per-rule metrics or matrices and calculate global efficacy metrics.
+
+    Returns:
+        tuple of (overall_matrix, precision, recall, f1_score, fpr, accuracy)
+    """
+    if isinstance(rule_metrics_or_matrices, dict):
+        matrices = [rm.matrix for rm in rule_metrics_or_matrices.values()]
+    else:
+        matrices = rule_metrics_or_matrices
+
+    overall_matrix = aggregate_matrices(matrices)
+    precision, recall, f1, fpr, accuracy = calculate_metrics(overall_matrix)
+
+    return overall_matrix, precision, recall, f1, fpr, accuracy
+
