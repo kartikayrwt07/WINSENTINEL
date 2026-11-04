@@ -8,7 +8,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 
 - [x] **Phase 1: Ingestion & Normalization Engine** - Parse EVTX, XML, and JSON logs; validate and normalize Sysmon and Security events into a unified typed schema. (completed 2026-11-04)
 - [x] **Phase 2: Database Layer & Persistent Storage** - Implement SQLite schema, migrations, indexed queries, and audit/import logging. (completed 2026-11-04)
-- [ ] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage.
+- [x] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage. (completed 2026-11-04)
 - [ ] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules.
 - [ ] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks.
 - [ ] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite.
@@ -64,11 +64,11 @@ Plans:
   3. Orphaned processes and incomplete parent event sequences are handled gracefully without exceptions.
   4. Process tree converts to NetworkX digraph for downstream visualization and path traversal.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 03-01: Process Tree Graph Model, Synthetic GUIDs, PID Resolver, and Process Repository (Wave 1)
-- [ ] 03-02: Suspicious Lineage Anomaly Detector, Tree Serialization, and Pipeline Integration (Wave 2)
+- [x] 03-01: Process Tree Graph Model, Synthetic GUIDs, PID Resolver, and Process Repository (Wave 1)
+- [x] 03-02: Suspicious Lineage Anomaly Detector, Tree Serialization, and Pipeline Integration (Wave 2)
 
 ### Phase 4: Detection Rule Engine & Sysmon Core Library
 

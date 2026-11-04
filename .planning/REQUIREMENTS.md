@@ -27,11 +27,11 @@
 
 ### 3. Process Relationship Analyzer (PROC)
 
-- [ ] **PROC-01**: Reconstruct process ancestry tree using Sysmon `ProcessGuid` and `ParentProcessGuid` as primary keys.
-- [ ] **PROC-02**: Handle PID reuse gracefully by scoping temporal process lifespans (creation EID 1 to termination EID 5).
-- [ ] **PROC-03**: Detect and handle orphaned processes and missing parent process records.
-- [ ] **PROC-04**: Flag anomalous parent-child execution lineages (e.g., Office apps spawning `cmd.exe`/`powershell.exe`, web servers spawning shell interpreters).
-- [ ] **PROC-05**: Export process hierarchy into NetworkX digraph representation for graph queries and visualization.
+- [x] **PROC-01**: Reconstruct process ancestry tree using Sysmon `ProcessGuid` and `ParentProcessGuid` as primary keys.
+- [x] **PROC-02**: Handle PID reuse gracefully by scoping temporal process lifespans (creation EID 1 to termination EID 5).
+- [x] **PROC-03**: Detect and handle orphaned processes and missing parent process records.
+- [x] **PROC-04**: Flag anomalous parent-child execution lineages (e.g., Office apps spawning `cmd.exe`/`powershell.exe`, web servers spawning shell interpreters).
+- [x] **PROC-05**: Export process hierarchy into NetworkX digraph representation for graph queries and visualization.
 
 ### 4. Detection Rule Engine (RULE)
 
@@ -127,11 +127,11 @@
 | NORM-07 | Phase 1 | Complete |
 | NORM-08 | Phase 1 | Complete |
 | ALERT-01 | Phase 2 | Complete |
-| PROC-01 | Phase 3 | Pending |
-| PROC-02 | Phase 3 | Pending |
-| PROC-03 | Phase 3 | Pending |
-| PROC-04 | Phase 3 | Pending |
-| PROC-05 | Phase 3 | Pending |
+| PROC-01 | Phase 3 | Complete |
+| PROC-02 | Phase 3 | Complete |
+| PROC-03 | Phase 3 | Complete |
+| PROC-04 | Phase 3 | Complete |
+| PROC-05 | Phase 3 | Complete |
 | RULE-01 | Phase 4 | Pending |
 | RULE-02 | Phase 4 | Pending |
 | RULE-03 | Phase 4 | Pending |
