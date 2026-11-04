@@ -13,6 +13,11 @@ from app.models.events import (
     parse_windows_timestamp,
 )
 from app.models.fingerprint import compute_event_fingerprint
+from app.models.incident import (
+    CompoundIncident,
+    IncidentStage,
+    generate_incident_narrative,
+)
 from app.models.persistence import PersistenceArtifact, PersistenceType
 from app.models.powershell import PowerShellAnalysisResult
 from app.models.rule import (
@@ -34,6 +39,9 @@ __all__ = [
     "parse_hashes_string",
     "parse_windows_timestamp",
     "compute_event_fingerprint",
+    "CompoundIncident",
+    "IncidentStage",
+    "generate_incident_narrative",
     "PersistenceArtifact",
     "PersistenceType",
     "PowerShellAnalysisResult",
