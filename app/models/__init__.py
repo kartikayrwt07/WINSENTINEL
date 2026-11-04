@@ -8,6 +8,13 @@ from app.models.events import (
     parse_windows_timestamp,
 )
 from app.models.fingerprint import compute_event_fingerprint
+from app.models.rule import (
+    DetectionBlock,
+    DetectionRule,
+    LogSource,
+    RuleSeverity,
+    RuleStatus,
+)
 from app.models.stats import ImportStatistics, QuarantineRecord
 
 __all__ = [
@@ -19,4 +26,9 @@ __all__ = [
     "compute_event_fingerprint",
     "ImportStatistics",
     "QuarantineRecord",
+    "DetectionBlock",
+    "DetectionRule",
+    "LogSource",
+    "RuleSeverity",
+    "RuleStatus",
 ]
