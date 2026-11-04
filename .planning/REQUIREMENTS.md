@@ -43,19 +43,19 @@
 
 ### 5. PowerShell Threat Detection (PWSH)
 
-- [ ] **PWSH-01**: Detection of Base64-encoded command arguments (`-enc`, `-EncodedCommand`) with safe, non-executing string decoding for inspection.
-- [ ] **PWSH-02**: Detection of download cradles (`Net.WebClient`, `Invoke-WebRequest`, `IWR`, `Start-BitsTransfer`).
-- [ ] **PWSH-03**: Detection of execution policy bypass flags (`-ep bypass`, `-ExecutionPolicy Unrestricted`, `-nop`).
-- [ ] **PWSH-04**: Detection of obfuscation, hidden window modes (`-w hidden`), and multi-line script-block execution patterns from EID 4104.
-- [ ] **PWSH-05**: Contextual scoring preventing benign administrative PowerShell scripts from generating high-severity false alarms.
+- [x] **PWSH-01**: Detection of Base64-encoded command arguments (`-enc`, `-EncodedCommand`) with safe, non-executing string decoding for inspection.
+- [x] **PWSH-02**: Detection of download cradles (`Net.WebClient`, `Invoke-WebRequest`, `IWR`, `Start-BitsTransfer`).
+- [x] **PWSH-03**: Detection of execution policy bypass flags (`-ep bypass`, `-ExecutionPolicy Unrestricted`, `-nop`).
+- [x] **PWSH-04**: Detection of obfuscation, hidden window modes (`-w hidden`), and multi-line script-block execution patterns from EID 4104.
+- [x] **PWSH-05**: Contextual scoring preventing benign administrative PowerShell scripts from generating high-severity false alarms.
 
 ### 6. Persistence Detection (PERS)
 
-- [ ] **PERS-01**: Detection of Registry persistence modifications (CurrentVersion\Run, RunOnce, Winlogon, Image File Execution Options / IFEO).
-- [ ] **PERS-02**: Detection of Service installation and suspicious driver loads (Sysmon EID 6, Security EID 4697).
-- [ ] **PERS-03**: Detection of Scheduled Task creation via Task Scheduler Operational logs and Security EID 4698 (not inferring tasks purely from Sysmon registry events).
-- [ ] **PERS-04**: Detection of WMI event subscriptions (Sysmon EID 19, 20, 21: EventFilter, EventConsumer, FilterToConsumerBinding).
-- [ ] **PERS-05**: Detection of suspicious binary placement in Startup folders and system directories.
+- [x] **PERS-01**: Detection of Registry persistence modifications (CurrentVersion\Run, RunOnce, Winlogon, Image File Execution Options / IFEO).
+- [x] **PERS-02**: Detection of Service installation and suspicious driver loads (Sysmon EID 6, Security EID 4697).
+- [x] **PERS-03**: Detection of Scheduled Task creation via Task Scheduler Operational logs and Security EID 4698 (not inferring tasks purely from Sysmon registry events).
+- [x] **PERS-04**: Detection of WMI event subscriptions (Sysmon EID 19, 20, 21: EventFilter, EventConsumer, FilterToConsumerBinding).
+- [x] **PERS-05**: Detection of suspicious binary placement in Startup folders and system directories.
 
 ### 7. Event Correlation Engine (CORR)
 
@@ -137,16 +137,16 @@
 | RULE-03 | Phase 4 | Complete |
 | RULE-04 | Phase 4 | Complete |
 | RULE-05 | Phase 4 | Complete |
-| PWSH-01 | Phase 5 | Pending |
-| PWSH-02 | Phase 5 | Pending |
-| PWSH-03 | Phase 5 | Pending |
-| PWSH-04 | Phase 5 | Pending |
-| PWSH-05 | Phase 5 | Pending |
-| PERS-01 | Phase 5 | Pending |
-| PERS-02 | Phase 5 | Pending |
-| PERS-03 | Phase 5 | Pending |
-| PERS-04 | Phase 5 | Pending |
-| PERS-05 | Phase 5 | Pending |
+| PWSH-01 | Phase 5 | Complete |
+| PWSH-02 | Phase 5 | Complete |
+| PWSH-03 | Phase 5 | Complete |
+| PWSH-04 | Phase 5 | Complete |
+| PWSH-05 | Phase 5 | Complete |
+| PERS-01 | Phase 5 | Complete |
+| PERS-02 | Phase 5 | Complete |
+| PERS-03 | Phase 5 | Complete |
+| PERS-04 | Phase 5 | Complete |
+| PERS-05 | Phase 5 | Complete |
 | CORR-01 | Phase 6 | Pending |
 | CORR-02 | Phase 6 | Pending |
 | CORR-03 | Phase 6 | Pending |

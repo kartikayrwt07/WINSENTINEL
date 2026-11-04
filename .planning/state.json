@@ -26,12 +26,12 @@
     {
       "number": "5",
       "name": "PowerShell & Persistence Threat Analyzers",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "6",
       "name": "Event Correlation & Alert Management",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "7",
@@ -46,8 +46,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 5)",
-    "reason": "Phase 5 of 8 — needs a plan"
+    "label": "Advance to the next step (plan phase 6)",
+    "reason": "Phase 6 of 8 — needs a plan"
   },
-  "updated_at": "2026-11-04T11:25:03.746Z"
+  "updated_at": "2026-11-04T12:30:19.251Z"
 }

@@ -10,7 +10,7 @@ WinSentinel is built incrementally as a modular, offline-first Windows Endpoint 
 - [x] **Phase 2: Database Layer & Persistent Storage** - Implement SQLite schema, migrations, indexed queries, and audit/import logging. (completed 2026-11-04)
 - [x] **Phase 3: Process Relationship Analyzer** - Build process tree reconstruction using Sysmon ProcessGuid, handling PID reuse and anomalous parentage. (completed 2026-11-04)
 - [x] **Phase 4: Detection Rule Engine & Sysmon Core Library** - Create Sigma-inspired YAML rule parser, matching engine, exclusions, and Sysmon detection rules. (completed 2026-11-04)
-- [ ] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks.
+- [x] **Phase 5: PowerShell & Persistence Threat Analyzers** - Specialized detection for obfuscated PowerShell, download cradles, registry Run keys, services, WMI, and scheduled tasks. (completed 2026-11-04)
 - [ ] **Phase 6: Event Correlation & Alert Management** - Correlate multi-stage events across process lineage and time windows; manage alert lifecycle in SQLite.
 - [ ] **Phase 7: False-Positive & Rule Evaluation Engine** - Benchmark detection rules against labeled synthetic datasets; calculate Precision, Recall, F1, and FPR.
 - [ ] **Phase 8: SOC Investigation Dashboard & Timeline** - Build 10-page Streamlit dashboard featuring Event Explorer, Process Tree graphs, Timeline, Alerts, and Evaluation reports.
@@ -98,11 +98,11 @@ Plans:
   2. Download cradles, execution policy bypass, and hidden windows are detected with contextual scoring.
   3. Persistence mechanisms across Registry Run keys, Services, WMI subscriptions, and Scheduled Tasks (from EID 4698/Task logs) are flagged with evidence.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 05-01: PowerShell analyzer with safe de-obfuscation and multi-pattern threat scoring.
-- [ ] 05-02: Persistence analyzer correlating Registry, Service, Task Scheduler, and WMI telemetry.
+- [x] 05-01: PowerShell analyzer with safe de-obfuscation and multi-pattern threat scoring.
+- [x] 05-02: Persistence analyzer correlating Registry, Service, Task Scheduler, and WMI telemetry.
 
 ### Phase 6: Event Correlation & Alert Management
 
