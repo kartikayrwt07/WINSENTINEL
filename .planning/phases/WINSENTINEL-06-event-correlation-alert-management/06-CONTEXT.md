@@ -102,3 +102,4 @@ Phase 6 delivers the multi-stage attack correlation engine, compound incident ge
 - `.planning/phases/WINSENTINEL-05-powershell-persistence-threat-analyzers/05-VERIFICATION.md` — PowerShell threat and persistence analyzer models.
 
 </canonical_refs>
+
