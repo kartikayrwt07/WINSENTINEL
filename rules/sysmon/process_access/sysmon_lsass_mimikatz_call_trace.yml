@@ -1,0 +1,27 @@
+id: WS-SYS-011
+title: Mimikatz Sekurlsa Call Trace
+description: Detects process access to LSASS where the CallTrace contains known credential dumping modules (sekurlsa.dll or dbghelp.dll).
+author: WinSentinel Team
+severity: critical
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 10
+detection:
+  selection:
+    target_image|endswith: '\lsass.exe'
+    call_trace|contains:
+      - 'sekurlsa.dll'
+      - 'dbghelp.dll'
+  condition: selection
+mitre_attack:
+  - T1003.001
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+falsepositives:
+  - Legitimate debuggers or crash reporting tools attaching to LSASS
+investigation_steps:
+  - Identify the calling process and loaded modules.
+  - Check if MiniDumpWriteDump was executed against LSASS memory.
+  - Immediately isolate host and rotate credentials if confirmed unauthorized.

@@ -1,0 +1,34 @@
+id: WS-SYS-010
+title: Suspicious LSASS GrantedAccess
+description: Detects suspicious process access masks requested against lsass.exe indicating memory dumping or credential scraping.
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 10
+detection:
+  selection:
+    target_image|endswith: '\lsass.exe'
+    granted_access|contains:
+      - '0x1010'
+      - '0x1410'
+      - '0x1038'
+      - '0x1F0FFF'
+      - '0x143A'
+  filter:
+    source_image|endswith:
+      - '\svchost.exe'
+      - '\taskmgr.exe'
+  condition: selection and not filter
+mitre_attack:
+  - T1003.001
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+falsepositives:
+  - Legitimate security agents, antivirus software, or Task Manager inspecting LSASS
+investigation_steps:
+  - Identify the requesting source process and parent image.
+  - Inspect the CallTrace field to observe the DLL stack that initiated OpenProcess.
+  - Check for memory dump files (e.g. lsass.dmp) created on disk.

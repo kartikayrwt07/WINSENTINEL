@@ -12,11 +12,19 @@ from typing import Any
 from app.analyzers.lineage_detector import LineageAnomaly, LineageAnomalyDetector
 from app.analyzers.process_analyzer import ProcessTreeGraph
 from app.database.connection import DatabaseManager
-from app.database.repository import EventRepository, ImportJobRepository, ProcessRepository
+from app.database.repository import (
+    AlertRepository,
+    EventRepository,
+    ImportJobRepository,
+    ProcessRepository,
+)
+from app.detection.engine import DetectionEngine
+from app.detection.loader import RuleLoader
 from app.ingestion.base import BaseParser, RawRecord
 from app.ingestion.evtx_parser import EVTXParser
 from app.ingestion.json_parser import JSONParser
 from app.ingestion.xml_parser import XMLParser, parse_event_xml
+from app.models.detection import DetectionMatch
 from app.models.events import EventCategory, NormalizedEvent
 from app.models.fingerprint import compute_event_fingerprint
 from app.models.stats import ImportStatistics, QuarantineRecord
@@ -30,7 +38,7 @@ class IngestionResult(tuple):
     """Result container for ingest_and_persist: (events, stats, job_id).
 
     Provides property accessors and duplicate/inserted counts, as well as
-    reconstructed process tree and detected lineage anomalies.
+    reconstructed process tree, detected lineage anomalies, and detection alerts.
     """
 
     def __new__(
@@ -42,6 +50,9 @@ class IngestionResult(tuple):
         duplicate_count: int = 0,
         process_tree: ProcessTreeGraph | None = None,
         anomalies: list[LineageAnomaly] | None = None,
+        alerts: list[dict[str, Any]] | None = None,
+        matches: list[DetectionMatch] | None = None,
+        alerts_created: int = 0,
     ):
         instance = super().__new__(cls, (events, stats, job_id))
         instance._events = events
@@ -51,6 +62,9 @@ class IngestionResult(tuple):
         instance._duplicate_count = duplicate_count
         instance._process_tree = process_tree
         instance._anomalies = anomalies if anomalies is not None else []
+        instance._alerts = alerts if alerts is not None else []
+        instance._matches = matches if matches is not None else []
+        instance._alerts_created = alerts_created if alerts_created else len(instance._alerts)
         return instance
 
     @property
@@ -80,6 +94,18 @@ class IngestionResult(tuple):
     @property
     def anomalies(self) -> list[LineageAnomaly]:
         return self._anomalies
+
+    @property
+    def alerts(self) -> list[dict[str, Any]]:
+        return self._alerts
+
+    @property
+    def matches(self) -> list[DetectionMatch]:
+        return self._matches
+
+    @property
+    def alerts_created(self) -> int:
+        return self._alerts_created
 
     def to_stats_tuple(self) -> tuple[ImportStatistics, int, int]:
         return (self._stats, self._job_id, self._inserted_count)
@@ -129,6 +155,8 @@ class IngestionPipeline:
         dispatcher: NormalizerDispatcher | None = None,
         db_manager: DatabaseManager | None = None,
         process_repo: ProcessRepository | None = None,
+        detection_engine: DetectionEngine | None = None,
+        alert_repo: AlertRepository | None = None,
     ) -> None:
         self.base_dir = base_dir
         self.dispatcher = dispatcher or NormalizerDispatcher()
@@ -138,6 +166,30 @@ class IngestionPipeline:
         self._process_repo = process_repo if process_repo is not None else (
             ProcessRepository(db_manager) if db_manager is not None else None
         )
+        self.alert_repo = alert_repo if alert_repo is not None else (
+            AlertRepository(db_manager) if db_manager is not None else None
+        )
+
+        if detection_engine is not None:
+            self.detection_engine = detection_engine
+        else:
+            rules_path = Path("rules")
+            if rules_path.is_dir():
+                try:
+                    loader = RuleLoader()
+                    rules = loader.load_rules_from_directory(rules_path, recursive=True, strict=False)
+                    if rules:
+                        engine = DetectionEngine()
+                        engine.load_rules(rules)
+                        self.detection_engine = engine
+                    else:
+                        self.detection_engine = None
+                except Exception as err:
+                    logger.debug("Failed to auto-load detection rules from %s: %s", rules_path, err)
+                    self.detection_engine = None
+            else:
+                self.detection_engine = None
+
         self._detector = LineageAnomalyDetector()
         self.seen_hashes: set[str] = set()
 
@@ -346,6 +398,7 @@ class IngestionPipeline:
         db_manager: DatabaseManager | None = None,
         return_events: bool = True,
         sync_processes: bool = True,
+        run_detections: bool = True,
     ) -> IngestionResult | tuple[ImportStatistics, int, int]:
         """Ingest a log file, audit file and job lifecycles, and persist events to SQLite.
 
@@ -356,6 +409,7 @@ class IngestionPipeline:
         4. High-throughput chunked batch insertion into the database with duplicate suppression.
         5. Reconciliation of job metrics and marking status COMPLETED (or FAILED on error).
         6. Optional process tree reconstruction, suspicious lineage detection, and SQLite persistence.
+        7. Optional streaming DetectionEngine rule evaluation and SQLite alert/evidence persistence.
 
         Returns:
             IngestionResult (unpackable as (events, stats, job_id)) or
@@ -385,6 +439,11 @@ class IngestionPipeline:
             self.process_repo
             if (active_db is self.db_manager and self.process_repo is not None)
             else ProcessRepository(active_db)
+        )
+        alert_repo = (
+            self.alert_repo
+            if (active_db is self.db_manager and self.alert_repo is not None)
+            else AlertRepository(active_db)
         )
 
         effective_base_dir = base_dir if base_dir is not None else self.base_dir
@@ -509,6 +568,36 @@ class IngestionPipeline:
                 logger.exception("Process sync failed in ingest_and_persist: %s", err)
                 raise
 
+        all_matches: list[DetectionMatch] = []
+        alert_dicts: list[dict[str, Any]] = []
+        alerts_created: int = 0
+
+        if run_detections and self.detection_engine is not None and alert_repo is not None:
+            try:
+                for event in normalized_events:
+                    ev_matches = self.detection_engine.evaluate_event(event)
+                    if ev_matches:
+                        event_db_id = event_repo.get_db_id_by_hash(event.event_hash)
+                        if event_db_id is not None:
+                            ev_matches = [
+                                m.model_copy(update={"event_db_id": event_db_id})
+                                for m in ev_matches
+                            ]
+                        all_matches.extend(ev_matches)
+
+                if all_matches:
+                    alert_ids = self.detection_engine.persist_matches(all_matches, alert_repo)
+                    alerts_created = len(alert_ids)
+                    for aid, m in zip(alert_ids, all_matches):
+                        a_dict = m.to_alert_dict()
+                        a_dict["alert_id"] = aid
+                        a_dict["event_db_id"] = m.event_db_id
+                        a_dict["investigation_steps"] = m.investigation_steps
+                        alert_dicts.append(a_dict)
+            except Exception as err:
+                logger.exception("Detection evaluation or persistence failed in ingest_and_persist: %s", err)
+                raise
+
         if not return_events:
             return (stats, job_id, inserted)
 
@@ -520,4 +609,7 @@ class IngestionPipeline:
             duplicate_count=stats.duplicate_events,
             process_tree=process_tree,
             anomalies=anomalies,
+            alerts=alert_dicts,
+            matches=all_matches,
+            alerts_created=alerts_created,
         )

@@ -1,0 +1,29 @@
+id: WS-SYS-007
+title: Regsvr32 Squiblydoo Remote Script
+description: Detects regsvr32.exe loading remote COM scriptlets via scrobj.dll (Squiblydoo technique).
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\regsvr32.exe'
+    command_line|contains:
+      - 'scrobj.dll'
+      - '/i:http'
+      - '/i:https'
+  condition: selection
+mitre_attack:
+  - T1218.010
+references:
+  - https://attack.mitre.org/techniques/T1218/010/
+  - https://lolbas-project.github.io/lolbas/Binaries/Regsvr32/
+falsepositives:
+  - Rare legacy installer scripts registering COM objects over HTTP
+investigation_steps:
+  - Identify the remote scriptlet URL passed via the /i parameter.
+  - Inspect network traffic for payload downloads corresponding to the URL.
+  - Analyze any DLLs dropped or child processes created by regsvr32.exe.

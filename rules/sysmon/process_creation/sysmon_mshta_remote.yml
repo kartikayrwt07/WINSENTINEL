@@ -1,0 +1,30 @@
+id: WS-SYS-002
+title: Suspicious Mshta Remote Execution
+description: Detects mshta.exe executing remote scripts or inline javascript/vbscript protocols.
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\mshta.exe'
+    command_line|contains:
+      - 'http://'
+      - 'https://'
+      - 'javascript:'
+      - 'vbscript:'
+  condition: selection
+mitre_attack:
+  - T1218.005
+references:
+  - https://attack.mitre.org/techniques/T1218/005/
+  - https://lolbas-project.github.io/lolbas/Binaries/Mshta/
+falsepositives:
+  - Legacy enterprise intranet applications launched with mshta
+investigation_steps:
+  - Inspect parent process spawning mshta.exe.
+  - Extract URL or script payload embedded in the command line.
+  - Search for secondary processes spawned by mshta (e.g. cmd.exe, powershell.exe).

@@ -1,0 +1,28 @@
+id: WS-SYS-006
+title: Whoami Reconnaissance
+description: Detects execution of whoami.exe with flags commonly used by attackers to discover privileges and group memberships.
+author: WinSentinel Team
+severity: low
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\whoami.exe'
+    command_line|contains:
+      - '/priv'
+      - '/all'
+      - '/groups'
+  condition: selection
+mitre_attack:
+  - T1033
+references:
+  - https://attack.mitre.org/techniques/T1033/
+falsepositives:
+  - Administrative troubleshooting and user environment verification scripts
+investigation_steps:
+  - Check the parent process that invoked whoami (e.g. web server, Office application, remote shell).
+  - Look for subsequent enumeration commands (e.g. net user, nltest, systeminfo).
+  - Correlate with recent login events on the host.

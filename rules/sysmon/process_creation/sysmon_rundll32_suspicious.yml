@@ -1,0 +1,29 @@
+id: WS-SYS-005
+title: Rundll32 Suspicious Execution
+description: Detects rundll32.exe executing DLLs or scripts from suspicious directories or inline protocols.
+author: WinSentinel Team
+severity: medium
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\rundll32.exe'
+    command_line|contains:
+      - '\AppData\Local\Temp'
+      - '\Users\Public\'
+      - 'javascript:'
+  condition: selection
+mitre_attack:
+  - T1218.011
+references:
+  - https://attack.mitre.org/techniques/T1218/011/
+  - https://lolbas-project.github.io/lolbas/Binaries/Rundll32/
+falsepositives:
+  - Temporary installers or software updaters running from Temp directories
+investigation_steps:
+  - Identify the target DLL file or JavaScript protocol executed by rundll32.
+  - Check the signing status and hash of the DLL file.
+  - Review parent process lineage to trace execution origin.

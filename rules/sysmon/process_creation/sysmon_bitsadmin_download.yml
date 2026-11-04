@@ -1,0 +1,29 @@
+id: WS-SYS-003
+title: BITSAdmin Job Download
+description: Detects bitsadmin.exe creating or transferring download jobs to retrieve files from external sources.
+author: WinSentinel Team
+severity: medium
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\bitsadmin.exe'
+    command_line|contains:
+      - '/transfer'
+      - '/create'
+      - '/addfile'
+  condition: selection
+mitre_attack:
+  - T1197
+references:
+  - https://attack.mitre.org/techniques/T1197/
+  - https://lolbas-project.github.io/lolbas/Binaries/Bitsadmin/
+falsepositives:
+  - Legitimate enterprise patching scripts using BITSAdmin
+investigation_steps:
+  - Check the remote transfer URL and local destination path in command line arguments.
+  - Determine the user account that executed bitsadmin.exe.
+  - Check if bitsadmin was invoked with /resume or /complete parameters.

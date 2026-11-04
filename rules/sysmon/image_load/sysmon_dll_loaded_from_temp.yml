@@ -1,0 +1,29 @@
+id: WS-SYS-013
+title: DLL Loaded from Temp Directory
+description: Detects unsigned dynamic link libraries loaded from temporary or public directories, indicative of DLL side-loading or drops.
+author: WinSentinel Team
+severity: medium
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 7
+detection:
+  selection:
+    image_loaded|contains:
+      - '\AppData\Local\Temp\'
+      - '\Windows\Temp\'
+      - '\Users\Public\'
+  filter:
+    signed: 'true'
+  condition: selection and not filter
+mitre_attack:
+  - T1574.002
+references:
+  - https://attack.mitre.org/techniques/T1574/002/
+falsepositives:
+  - Legitimately dropped unsigned DLLs from legitimate portable applications
+investigation_steps:
+  - Determine which executable process loaded the DLL.
+  - Inspect file creation events for the DLL in question.
+  - Compute file hash and check against VirusTotal or internal repository.

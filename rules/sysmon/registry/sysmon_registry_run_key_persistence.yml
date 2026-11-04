@@ -1,0 +1,31 @@
+id: WS-SYS-014
+title: Registry Run Key Persistence
+description: Detects modification of Run or RunOnce registry keys to establish persistence across reboots.
+author: WinSentinel Team
+severity: medium
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id:
+    - 12
+    - 13
+detection:
+  selection:
+    registry_target_object|contains:
+      - '\CurrentVersion\Run'
+      - '\CurrentVersion\RunOnce'
+  filter:
+    image|endswith:
+      - '\OneDriveStandaloneUpdater.exe'
+  condition: selection and not filter
+mitre_attack:
+  - T1547.001
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+falsepositives:
+  - Legitimate software installers and enterprise update agents
+investigation_steps:
+  - Check registry_details to identify the target executable registered for autorun.
+  - Trace the process that modified the registry key.
+  - Verify whether the registered binary is signed and reputable.

@@ -1,0 +1,28 @@
+id: WS-SYS-004
+title: UAC Bypass via Fodhelper
+description: Detects command shells spawned by fodhelper.exe, indicating exploitation of Registry Hijacking for UAC bypass.
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    parent_image|endswith: '\fodhelper.exe'
+    image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  condition: selection
+mitre_attack:
+  - T1548.002
+references:
+  - https://attack.mitre.org/techniques/T1548/002/
+falsepositives:
+  - Rare administrative maintenance scripts manually launched under fodhelper
+investigation_steps:
+  - Inspect user registry hive at HKCU:\Software\Classes\ms-settings\Shell\Open\command.
+  - Verify integrity level of the child shell (High or System).
+  - Review commands executed by the spawned shell process.

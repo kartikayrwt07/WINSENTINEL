@@ -1,0 +1,29 @@
+id: WS-SYS-009
+title: Remote Thread into Sensitive Process
+description: Detects creation of a remote thread into explorer.exe or svchost.exe from untrusted directories.
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 8
+detection:
+  selection:
+    target_image|endswith:
+      - '\explorer.exe'
+      - '\svchost.exe'
+    source_image|contains:
+      - '\Temp\'
+      - '\Users\Public\'
+  condition: selection
+mitre_attack:
+  - T1055.001
+references:
+  - https://attack.mitre.org/techniques/T1055/001/
+falsepositives:
+  - Software updaters executing temporarily from Temp directories
+investigation_steps:
+  - Inspect the source executable located in Temp or Public directory.
+  - Check memory permissions and thread start address in the target process.
+  - Correlate with subsequent network connections originating from the target process.

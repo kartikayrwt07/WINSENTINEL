@@ -1,0 +1,33 @@
+id: WS-SYS-016
+title: Suspicious Dynamic DNS Query
+description: Detects DNS query resolution targeting dynamic DNS, tunneling, or reverse proxy domains frequently used for C2 communication.
+author: WinSentinel Team
+severity: medium
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 22
+detection:
+  selection:
+    query_name|endswith:
+      - '.duckdns.org'
+      - '.hopto.org'
+      - '.no-ip.biz'
+      - '.no-ip.org'
+      - '.zapto.org'
+      - '.ngrok.io'
+      - '.ngrok-free.app'
+  condition: selection
+mitre_attack:
+  - T1071.004
+  - T1568.002
+references:
+  - https://attack.mitre.org/techniques/T1071/004/
+  - https://attack.mitre.org/techniques/T1568/002/
+falsepositives:
+  - Developers using tunneling services such as ngrok for local testing
+investigation_steps:
+  - Identify the process making the DNS request and its parent process.
+  - Inspect IP addresses returned in query_results.
+  - Check subsequent network connection events (Sysmon EID 3) to the resolved IP.

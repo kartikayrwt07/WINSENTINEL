@@ -1,0 +1,29 @@
+id: WS-SYS-008
+title: Remote Thread Injection into LSASS
+description: Detects creation of a remote thread targeting the LSASS process, indicative of process injection or credential dumping.
+author: WinSentinel Team
+severity: critical
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 8
+detection:
+  selection:
+    target_image|endswith: '\lsass.exe'
+  filter:
+    source_image|endswith:
+      - '\csrss.exe'
+  condition: selection and not filter
+mitre_attack:
+  - T1055
+  - T1003.001
+references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://attack.mitre.org/techniques/T1003/001/
+falsepositives:
+  - Legitimate Windows subsystem processes such as csrss.exe
+investigation_steps:
+  - Identify the source process and binary that created the remote thread.
+  - Examine the start address and module loaded in LSASS.
+  - Check if credentials or memory dump files were written shortly after.

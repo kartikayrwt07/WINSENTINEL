@@ -1,0 +1,28 @@
+id: WS-SYS-001
+title: Suspicious Certutil Download
+description: Detects certutil.exe making network connections or downloading files via -urlcache / -split commands.
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 1
+detection:
+  selection:
+    image|endswith: '\certutil.exe'
+    command_line|contains:
+      - '-urlcache'
+      - '-split'
+  condition: selection
+mitre_attack:
+  - T1105
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://lolbas-project.github.io/lolbas/Binaries/Certutil/
+falsepositives:
+  - Legitimate administrative certificate revocation list (CRL) fetching scripts
+investigation_steps:
+  - Examine command line parameters for destination file paths and URLs.
+  - Check network connection telemetry for remote IP addresses contacted by certutil.
+  - Inspect downloaded file location and verify file hashes with threat intelligence.

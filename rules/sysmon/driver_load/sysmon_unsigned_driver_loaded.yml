@@ -1,0 +1,31 @@
+id: WS-SYS-012
+title: Unsigned or Untrusted Driver Loaded
+description: Detects loading of a kernel driver that is unsigned or has an invalid/revoked digital signature (BYOVD / rootkit activity).
+author: WinSentinel Team
+severity: high
+status: active
+logsource:
+  product: windows
+  service: sysmon
+  event_id: 6
+detection:
+  selection_unsigned:
+    signed: 'false'
+  selection_invalid:
+    signature_status|contains:
+      - 'revoked'
+      - 'invalid'
+      - 'untrusted'
+  condition: selection_unsigned or selection_invalid
+mitre_attack:
+  - T1068
+  - T1562.001
+references:
+  - https://attack.mitre.org/techniques/T1068/
+  - https://attack.mitre.org/techniques/T1562/001/
+falsepositives:
+  - Legacy hardware drivers or testing drivers in developer test-signing mode
+investigation_steps:
+  - Verify image_loaded path and driver hash against Known Good databases.
+  - Check the process that requested the driver load.
+  - Review kernel-mode integrity logs and event 7045 in System log.
