@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.database.connection import DatabaseManager
+from app.database.repository import EventRepository, ImportJobRepository
 from app.ingestion.base import BaseParser, RawRecord
 from app.ingestion.evtx_parser import EVTXParser
 from app.ingestion.json_parser import JSONParser
@@ -19,6 +22,52 @@ from app.normalization.dispatcher import NormalizerDispatcher
 from app.utils.security import sanitize_input_path
 
 logger = logging.getLogger(__name__)
+
+
+class IngestionResult(tuple):
+    """Result container for ingest_and_persist: (events, stats, job_id).
+
+    Provides property accessors and duplicate/inserted counts.
+    """
+
+    def __new__(
+        cls,
+        events: list[NormalizedEvent],
+        stats: ImportStatistics,
+        job_id: int,
+        inserted_count: int = 0,
+        duplicate_count: int = 0,
+    ):
+        instance = super().__new__(cls, (events, stats, job_id))
+        instance._events = events
+        instance._stats = stats
+        instance._job_id = job_id
+        instance._inserted_count = inserted_count
+        instance._duplicate_count = duplicate_count
+        return instance
+
+    @property
+    def events(self) -> list[NormalizedEvent]:
+        return self._events
+
+    @property
+    def stats(self) -> ImportStatistics:
+        return self._stats
+
+    @property
+    def job_id(self) -> int:
+        return self._job_id
+
+    @property
+    def inserted_count(self) -> int:
+        return self._inserted_count
+
+    @property
+    def duplicate_count(self) -> int:
+        return self._duplicate_count
+
+    def to_stats_tuple(self) -> tuple[ImportStatistics, int, int]:
+        return (self._stats, self._job_id, self._inserted_count)
 
 
 def _extract_json_fields(obj: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -63,9 +112,13 @@ class IngestionPipeline:
         self,
         base_dir: Path | None = None,
         dispatcher: NormalizerDispatcher | None = None,
+        db_manager: DatabaseManager | None = None,
     ) -> None:
         self.base_dir = base_dir
         self.dispatcher = dispatcher or NormalizerDispatcher()
+        self.db_manager = db_manager
+        self.event_repo = EventRepository(db_manager) if db_manager is not None else None
+        self.job_repo = ImportJobRepository(db_manager) if db_manager is not None else None
         self.seen_hashes: set[str] = set()
 
     def reset_deduplication(self) -> None:
@@ -259,3 +312,139 @@ class IngestionPipeline:
 
         stats.finish()
         return normalized_events, stats
+
+    def ingest_and_persist(
+        self,
+        file_path: str | Path,
+        base_dir: Path | None = None,
+        chunk_size: int = 1000,
+        db_manager: DatabaseManager | None = None,
+        return_events: bool = True,
+    ) -> IngestionResult | tuple[ImportStatistics, int, int]:
+        """Ingest a log file, audit file and job lifecycles, and persist events to SQLite.
+
+        Coordinates:
+        1. Path sanitization and SHA-256 file hashing.
+        2. Creation or update of imported_files and import_jobs records.
+        3. Streaming ingestion and normalization.
+        4. High-throughput chunked batch insertion into the database with duplicate suppression.
+        5. Reconciliation of job metrics and marking status COMPLETED (or FAILED on error).
+
+        Returns:
+            IngestionResult (unpackable as (events, stats, job_id)) or
+            tuple of (stats, job_id, inserted_count) if return_events is False.
+        """
+        if isinstance(base_dir, DatabaseManager):
+            db_manager = base_dir
+            base_dir = None
+
+        active_db = db_manager or self.db_manager
+        if active_db is None:
+            raise ValueError(
+                "DatabaseManager must be configured on IngestionPipeline or passed to ingest_and_persist"
+            )
+
+        event_repo = (
+            self.event_repo
+            if (active_db is self.db_manager and self.event_repo is not None)
+            else EventRepository(active_db)
+        )
+        job_repo = (
+            self.job_repo
+            if (active_db is self.db_manager and self.job_repo is not None)
+            else ImportJobRepository(active_db)
+        )
+
+        effective_base_dir = base_dir if base_dir is not None else self.base_dir
+        resolved_path = sanitize_input_path(
+            user_path=file_path,
+            base_dir=effective_base_dir,
+            allowed_extensions=[".evtx", ".xml", ".json", ".jsonl"],
+        )
+
+        # Compute SHA-256 hash and file size
+        sha256 = hashlib.sha256()
+        with open(resolved_path, "rb") as f:
+            for block in iter(lambda: f.read(65536), b""):
+                sha256.update(block)
+        file_hash = sha256.hexdigest()
+        file_size = resolved_path.stat().st_size
+
+        file_id = job_repo.create_or_get_imported_file(
+            file_path=str(resolved_path),
+            file_name=resolved_path.name,
+            file_size_bytes=file_size,
+            file_hash_sha256=file_hash,
+        )
+
+        job_id = job_repo.create_import_job(
+            file_id=file_id,
+            file_path=str(resolved_path),
+            status="RUNNING",
+        )
+
+        try:
+            normalized_events, stats = self.ingest_file(
+                file_path=resolved_path,
+                base_dir=effective_base_dir,
+            )
+        except Exception as err:
+            logger.exception("Ingestion failed in ingest_and_persist: %s", err)
+            job_repo.update_import_job(
+                job_id=job_id,
+                status="FAILED",
+                total_events=0,
+                parsed_events=0,
+                malformed_events=1,
+                quarantined_events=0,
+                duplicate_events=0,
+                error_log=[f"Ingestion failure: {err}"],
+            )
+            raise
+
+        try:
+            inserted, duplicates = event_repo.insert_events_batch(
+                events=normalized_events,
+                import_job_id=job_id,
+                chunk_size=chunk_size,
+            )
+
+            # Reconcile database duplicates
+            if duplicates > 0:
+                stats.parsed_events = max(0, stats.parsed_events - duplicates)
+                stats.duplicate_events += duplicates
+
+            job_repo.update_import_job(
+                job_id=job_id,
+                status="COMPLETED",
+                total_events=stats.total_events,
+                parsed_events=stats.parsed_events,
+                malformed_events=stats.malformed_events,
+                quarantined_events=len(stats.quarantined_records),
+                duplicate_events=stats.duplicate_events,
+                error_log=stats.error_log if stats.error_log else None,
+            )
+        except Exception as err:
+            logger.exception("Database persistence failed in ingest_and_persist: %s", err)
+            job_repo.update_import_job(
+                job_id=job_id,
+                status="FAILED",
+                total_events=stats.total_events,
+                parsed_events=stats.parsed_events,
+                malformed_events=stats.malformed_events + 1,
+                quarantined_events=len(stats.quarantined_records),
+                duplicate_events=stats.duplicate_events,
+                error_log=stats.error_log + [f"Persistence failure: {err}"],
+            )
+            raise
+
+        if not return_events:
+            return (stats, job_id, inserted)
+
+        return IngestionResult(
+            events=normalized_events,
+            stats=stats,
+            job_id=job_id,
+            inserted_count=inserted,
+            duplicate_count=stats.duplicate_events,
+        )
