@@ -15,7 +15,7 @@ def test_initial_migration_applies_all_12_tables_and_indexes(tmp_path: Path) -> 
     runner = MigrationRunner(db_manager=db_manager)
 
     applied = runner.apply_migrations()
-    assert applied == [1]
+    assert 1 in applied
 
     expected_tables = {
         "schema_migrations",
@@ -115,7 +115,7 @@ def test_migration_runner_checksum_and_record_tracking(tmp_path: Path) -> None:
 
     expected_checksum = runner.compute_checksum(sql_path)
     applied = runner.apply_migrations()
-    assert applied == [1]
+    assert 1 in applied
 
     with db_manager.get_connection() as conn:
         applied_records = runner.get_applied_migrations(conn)
@@ -133,9 +133,9 @@ def test_migration_runner_idempotency(tmp_path: Path) -> None:
     db_manager = DatabaseManager(db_path=db_file)
     runner = MigrationRunner(db_manager=db_manager)
 
-    # First run applies version 1
+    # First run applies migrations
     applied_first = runner.apply_migrations()
-    assert applied_first == [1]
+    assert 1 in applied_first and 2 in applied_first
 
     # Second run is a no-op
     applied_second = runner.apply_migrations()

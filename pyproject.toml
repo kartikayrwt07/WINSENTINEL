@@ -9,6 +9,7 @@ description = "Offline Windows Endpoint Threat Monitoring & Forensic Triage Plat
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "networkx>=3.0",
     "pydantic>=2.7",
     "python-evtx>=0.8.1",
 ]

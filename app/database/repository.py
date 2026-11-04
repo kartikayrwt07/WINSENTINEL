@@ -12,6 +12,9 @@ import math
 from datetime import datetime, timezone
 from typing import Any
 
+import sqlite3
+
+from app.analyzers.process_analyzer import ProcessNode, ProcessTreeGraph
 from app.database.connection import DatabaseManager
 from app.database.query import (
     AlertFilter,
@@ -743,3 +746,275 @@ class AlertRepository:
                 page_size=safe_page_size,
                 total_pages=total_pages,
             )
+
+
+class ProcessRepository:
+    """Manages SQLite persistence for reconstructed process nodes and lifespans."""
+
+    def __init__(self, db_manager: DatabaseManager) -> None:
+        self.db_manager = db_manager
+
+    def upsert_process(self, conn: sqlite3.Connection, node: ProcessNode) -> None:
+        """Insert or update a process record idempotently inside an active connection."""
+        # Ensure parent exists if parent_process_guid is referenced to satisfy foreign key constraint
+        if node.parent_process_guid:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM processes WHERE process_guid = ?;", (node.parent_process_guid,))
+            if cur.fetchone() is None:
+                cur.execute(
+                    """
+                    INSERT OR IGNORE INTO processes (
+                        process_guid, process_id, computer, image, command_line,
+                        start_time, is_synthesized, is_orphaned
+                    ) VALUES (?, ?, ?, ?, ?, ?, 1, 1);
+                    """,
+                    (
+                        node.parent_process_guid,
+                        node.parent_process_id or 0,
+                        node.computer,
+                        node.parent_image or "UNKNOWN_PARENT.EXE",
+                        node.parent_command_line,
+                        node.start_time.isoformat(),
+                    ),
+                )
+
+        conn.execute(
+            """
+            INSERT INTO processes (
+                process_guid, process_id, computer, image, command_line,
+                current_directory, user, integrity_level, parent_process_guid,
+                parent_process_id, parent_image, parent_command_line,
+                start_time, end_time, exit_code, is_synthesized,
+                is_orphaned, is_anomalous, anomaly_reasons_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(process_guid) DO UPDATE SET
+                end_time = coalesce(excluded.end_time, processes.end_time),
+                exit_code = coalesce(excluded.exit_code, processes.exit_code),
+                is_synthesized = CASE 
+                    WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN 0 
+                    ELSE processes.is_synthesized 
+                END,
+                image = CASE 
+                    WHEN processes.is_synthesized = 1 AND excluded.is_synthesized = 0 THEN excluded.image 
+                    ELSE processes.image 
+                END,
+                command_line = CASE
+                    WHEN excluded.command_line IS NOT NULL THEN excluded.command_line
+                    ELSE processes.command_line
+                END,
+                user = CASE
+                    WHEN excluded.user IS NOT NULL THEN excluded.user
+                    ELSE processes.user
+                END,
+                parent_process_guid = CASE
+                    WHEN excluded.parent_process_guid IS NOT NULL THEN excluded.parent_process_guid
+                    ELSE processes.parent_process_guid
+                END,
+                parent_process_id = CASE
+                    WHEN excluded.parent_process_id IS NOT NULL THEN excluded.parent_process_id
+                    ELSE processes.parent_process_id
+                END,
+                parent_image = CASE
+                    WHEN excluded.parent_image IS NOT NULL THEN excluded.parent_image
+                    ELSE processes.parent_image
+                END,
+                parent_command_line = CASE
+                    WHEN excluded.parent_command_line IS NOT NULL THEN excluded.parent_command_line
+                    ELSE processes.parent_command_line
+                END,
+                is_anomalous = max(processes.is_anomalous, excluded.is_anomalous),
+                anomaly_reasons_json = CASE
+                    WHEN excluded.anomaly_reasons_json IS NOT NULL AND excluded.anomaly_reasons_json != '[]' THEN excluded.anomaly_reasons_json
+                    ELSE processes.anomaly_reasons_json
+                END;
+            """,
+            (
+                node.process_guid,
+                node.process_id,
+                node.computer,
+                node.image,
+                node.command_line,
+                node.current_directory,
+                node.user,
+                node.integrity_level,
+                node.parent_process_guid,
+                node.parent_process_id,
+                node.parent_image,
+                node.parent_command_line,
+                node.start_time.isoformat(),
+                node.end_time.isoformat() if node.end_time else None,
+                node.exit_code,
+                1 if node.is_synthesized else 0,
+                1 if node.is_orphaned else 0,
+                1 if node.is_anomalous else 0,
+                json.dumps(node.anomaly_reasons),
+            ),
+        )
+
+    def upsert_processes_batch(
+        self,
+        nodes: list[ProcessNode],
+        chunk_size: int = 1000,
+    ) -> int:
+        """Batch insert or update process records in atomic chunked transactions."""
+        if not nodes:
+            return 0
+
+        total_processed = 0
+        safe_chunk = max(1, chunk_size)
+
+        for i in range(0, len(nodes), safe_chunk):
+            chunk = nodes[i : i + safe_chunk]
+            with self.db_manager.get_connection() as conn:
+                for node in chunk:
+                    self.upsert_process(conn, node)
+                total_processed += len(chunk)
+
+        return total_processed
+
+    def update_process_termination(
+        self,
+        computer: str,
+        pid: int,
+        termination_time: datetime,
+        exit_code: int | None = None,
+        process_guid: str | None = None,
+    ) -> bool:
+        """Update termination timestamp and exit code in SQLite for specified process."""
+        term_iso = (
+            termination_time.isoformat()
+            if isinstance(termination_time, datetime)
+            else str(termination_time)
+        )
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            if process_guid:
+                cur.execute(
+                    """
+                    UPDATE processes
+                    SET end_time = ?, exit_code = coalesce(?, exit_code)
+                    WHERE process_guid = ?;
+                    """,
+                    (term_iso, exit_code, process_guid),
+                )
+                return cur.rowcount > 0
+            else:
+                cur.execute(
+                    """
+                    UPDATE processes
+                    SET end_time = ?, exit_code = coalesce(?, exit_code)
+                    WHERE process_guid = (
+                        SELECT process_guid FROM processes
+                        WHERE computer = ? AND process_id = ?
+                          AND start_time <= ?
+                          AND (end_time IS NULL OR end_time >= ?)
+                        ORDER BY start_time DESC
+                        LIMIT 1
+                    );
+                    """,
+                    (term_iso, exit_code, computer, pid, term_iso, term_iso),
+                )
+                return cur.rowcount > 0
+
+    def get_process_by_guid(self, process_guid: str) -> ProcessNode | None:
+        """Retrieve a single ProcessNode by GUID."""
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM processes WHERE process_guid = ?;", (process_guid,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            return self._row_to_node(row)
+
+    def get_processes_by_computer(self, computer: str) -> list[ProcessNode]:
+        """Retrieve all processes for a given host ordered by start_time ASC."""
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT * FROM processes WHERE computer = ? ORDER BY start_time ASC;",
+                (computer,),
+            )
+            return [self._row_to_node(row) for row in cur.fetchall()]
+
+    def get_all_processes(self, limit: int = 10000) -> list[ProcessNode]:
+        """Retrieve all processes across hosts ordered by start_time ASC up to limit."""
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT * FROM processes ORDER BY start_time ASC LIMIT ?;",
+                (limit,),
+            )
+            return [self._row_to_node(row) for row in cur.fetchall()]
+
+    def hydrate_tree_graph(
+        self,
+        computer: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> ProcessTreeGraph:
+        """Reconstruct a connected ProcessTreeGraph from persisted SQLite process records."""
+        query = "SELECT * FROM processes"
+        clauses: list[str] = []
+        params: list[Any] = []
+
+        if computer:
+            clauses.append("computer = ?")
+            params.append(computer)
+        if start_time:
+            clauses.append("start_time >= ?")
+            params.append(start_time.isoformat())
+        if end_time:
+            clauses.append("start_time <= ?")
+            params.append(end_time.isoformat())
+
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY start_time ASC;"
+
+        tree = ProcessTreeGraph()
+        with self.db_manager.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(query, params)
+            for row in cur.fetchall():
+                node = self._row_to_node(row)
+                tree.add_process(node)
+
+        return tree
+
+    # Alias for method name in plan
+    hydrate_process_tree = hydrate_tree_graph
+
+    def _row_to_node(self, row: sqlite3.Row) -> ProcessNode:
+        """Map SQLite row columns back to an immutable ProcessNode instance."""
+        keys = row.keys() if hasattr(row, "keys") else []
+        raw_anomaly = row["anomaly_reasons_json"] if "anomaly_reasons_json" in keys else None
+        anomaly_reasons = []
+        if raw_anomaly:
+            try:
+                anomaly_reasons = json.loads(raw_anomaly)
+            except Exception:
+                anomaly_reasons = []
+
+        return ProcessNode(
+            process_guid=row["process_guid"],
+            process_id=row["process_id"],
+            computer=row["computer"] if "computer" in keys else "UNKNOWN",
+            image=row["image"],
+            command_line=row["command_line"],
+            current_directory=row["current_directory"],
+            user=row["user"],
+            integrity_level=row["integrity_level"],
+            hashes={},
+            parent_process_guid=row["parent_process_guid"],
+            parent_process_id=row["parent_process_id"],
+            parent_image=row["parent_image"],
+            parent_command_line=row["parent_command_line"],
+            parent_user=row["parent_user"] if "parent_user" in keys else None,
+            start_time=datetime.fromisoformat(row["start_time"]),
+            end_time=datetime.fromisoformat(row["end_time"]) if ("end_time" in keys and row["end_time"]) else None,
+            exit_code=row["exit_code"],
+            is_synthesized=bool(row["is_synthesized"]) if "is_synthesized" in keys else False,
+            is_orphaned=bool(row["is_orphaned"]),
+            is_anomalous=bool(row["is_anomalous"]),
+            anomaly_reasons=anomaly_reasons,
+        )

@@ -16,6 +16,7 @@ from app.database.repository import (
     EventRepository,
     ImportedFileRepository,
     ImportJobRepository,
+    ProcessRepository,
 )
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "MigrationRecord",
     "MigrationRunner",
     "PaginatedResult",
+    "ProcessRepository",
     "build_alert_query",
     "build_alert_where_clause",
     "build_event_query",
