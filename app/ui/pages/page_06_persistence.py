@@ -105,3 +105,4 @@ def render_page(db_manager: DatabaseManager | None = None) -> dict[str, Any]:
                 st.info("No Startup folder file creation events recorded.")
 
     return summary
+

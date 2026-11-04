@@ -98,3 +98,4 @@ def render_page(db_manager: DatabaseManager | None = None) -> dict[str, Any]:
         "mitre": mitre,
         "recent_alerts": recent_alerts,
     }
+

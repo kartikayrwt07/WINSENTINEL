@@ -57,3 +57,4 @@ def render_page(db_manager: DatabaseManager | None = None) -> list[dict[str, Any
             st.info("No timeline events match the filter criteria.")
 
     return timeline_items
+

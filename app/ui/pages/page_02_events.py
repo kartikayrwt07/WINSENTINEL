@@ -110,3 +110,4 @@ def render_page(db_manager: DatabaseManager | None = None) -> dict[str, Any]:
         "events": events,
         "total_count": total_count,
     }
+

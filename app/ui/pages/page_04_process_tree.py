@@ -81,3 +81,4 @@ def render_page(db_manager: DatabaseManager | None = None) -> dict[str, Any]:
             st.code(target.get("command_line") or "None", language="powershell")
 
     return tree_data
+
